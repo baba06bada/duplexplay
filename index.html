@@ -4,429 +4,81 @@
     <meta charset="UTF-8">
     <title>DuplexPlay</title>
     <style>
-        /* Genel sıfırlama ve koyu tema */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            background: #0a0a0a;
-            color: #fff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 14px;
-            height: 100vh;
-            overflow: hidden;
-            user-select: none;
-        }
-        .screen {
-            display: none;
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            flex-direction: column;
-            background: #0a0a0a;
-        }
-        .screen.active {
-            display: flex;
-        }
-
-        /* Giriş ekranı */
-        #login-screen {
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .login-box {
-            background: #1a1a1a;
-            border-radius: 8px;
-            padding: 30px 25px;
-            max-width: 400px;
-            width: 100%;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
-        }
-        .login-box h1 {
-            font-size: 28px;
-            font-weight: 300;
-            text-align: center;
-            margin-bottom: 20px;
-            letter-spacing: 2px;
-            color: #00bfff;
-        }
-        .login-box label {
-            display: block;
-            margin: 12px 0 4px;
-            font-size: 12px;
-            color: #aaa;
-        }
-        .login-box input {
-            width: 100%;
-            padding: 10px 12px;
-            background: #2a2a2a;
-            border: 1px solid #333;
-            border-radius: 4px;
-            color: #fff;
-            font-size: 14px;
-        }
-        .login-box input:focus {
-            border-color: #00bfff;
-            outline: none;
-        }
-        .login-box .btn {
-            width: 100%;
-            padding: 12px;
-            margin-top: 20px;
-            background: #00bfff;
-            border: none;
-            border-radius: 4px;
-            color: #000;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .login-box .btn:active {
-            background: #0099cc;
-        }
-        .login-box .url-or {
-            text-align: center;
-            margin: 12px 0;
-            color: #555;
-            font-size: 13px;
-        }
-        .login-box .btn-secondary {
-            background: #333;
-            color: #fff;
-            margin-top: 5px;
-        }
-        .login-box .btn-secondary:active {
-            background: #444;
-        }
-        #login-status {
-            text-align: center;
-            margin-top: 12px;
-            color: #ff6b6b;
-            font-size: 13px;
-        }
-
-        /* Ana ekran (başlık, saat, sekmeler, içerik) */
-        #main-screen {
-            flex-direction: column;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 18px;
-            background: #111;
-            border-bottom: 1px solid #222;
-            flex-shrink: 0;
-        }
-        .header .logo {
-            font-size: 22px;
-            font-weight: 300;
-            color: #00bfff;
-            letter-spacing: 1px;
-        }
-        .header .time {
-            font-size: 14px;
-            color: #aaa;
-        }
-        .header .settings-btn {
-            background: none;
-            border: none;
-            color: #aaa;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 0 8px;
-        }
-        .header .settings-btn:active {
-            color: #fff;
-        }
-
-        /* Sekmeler */
-        .tabs {
-            display: flex;
-            background: #111;
-            border-bottom: 1px solid #222;
-            flex-shrink: 0;
-        }
-        .tabs .tab {
-            flex: 1;
-            text-align: center;
-            padding: 12px 0;
-            font-size: 14px;
-            font-weight: 500;
-            color: #888;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            transition: 0.1s;
-        }
-        .tabs .tab.active {
-            color: #fff;
-            border-bottom-color: #00bfff;
-        }
-        .tabs .tab:active {
-            background: #1a1a1a;
-        }
-
-        /* İçerik alanı */
-        .content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 12px 16px 80px;
-        }
-        .content h2 {
-            font-size: 16px;
-            font-weight: 400;
-            margin: 6px 0 12px;
-            color: #ccc;
-        }
-
-        /* Kategori grid */
-        .cat-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 16px;
-        }
-        .cat-item {
-            background: #1e1e1e;
-            padding: 10px 16px;
-            border-radius: 20px;
-            font-size: 13px;
-            color: #ddd;
-            cursor: pointer;
-            border: 1px solid #2a2a2a;
-        }
-        .cat-item.active {
-            background: #00bfff;
-            color: #000;
-            border-color: #00bfff;
-        }
-        .cat-item:active {
-            opacity: 0.7;
-        }
-
-        /* Stream listesi (grid) */
-        .stream-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            justify-content: flex-start;
-        }
-        .stream-card {
-            width: calc(33.333% - 12px);
-            background: #141414;
-            border-radius: 6px;
-            overflow: hidden;
-            cursor: pointer;
-            border: 1px solid #222;
-            transition: 0.1s;
-        }
-        .stream-card:active {
-            border-color: #00bfff;
-        }
-        .stream-card .thumb {
-            width: 100%;
-            padding-top: 56.25%;
-            background: #1a1a1a;
-            position: relative;
-            overflow: hidden;
-        }
-        .stream-card .thumb img {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            background: #222;
-        }
-        .stream-card .info {
-            padding: 8px 10px;
-        }
-        .stream-card .info .title {
-            font-size: 13px;
-            font-weight: 400;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .stream-card .info .sub {
-            font-size: 11px;
-            color: #777;
-            margin-top: 2px;
-        }
-
-        /* Geri butonu */
-        .back-btn {
-            display: inline-block;
-            padding: 6px 14px;
-            background: #222;
-            border-radius: 4px;
-            color: #aaa;
-            cursor: pointer;
-            font-size: 13px;
-            margin-bottom: 12px;
-            border: none;
-        }
-        .back-btn:active {
-            background: #333;
-        }
-
-        /* Oynatma ekranı */
-        #player-screen {
-            flex-direction: column;
-            background: #000;
-        }
-        #player-screen .video-wrap {
-            flex: 1;
-            background: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-        #player-screen video {
-            width: 100%;
-            height: 100%;
-            max-height: 70vh;
-            background: #000;
-        }
-        #player-screen .player-controls {
-            padding: 12px 18px;
-            background: #111;
-            border-top: 1px solid #222;
-        }
-        #player-screen .player-controls .title {
-            font-size: 16px;
-            margin-bottom: 4px;
-        }
-        #player-screen .player-controls .epg {
-            font-size: 12px;
-            color: #888;
-        }
-        .player-close {
-            position: absolute;
-            top: 12px;
-            right: 16px;
-            background: rgba(0,0,0,0.6);
-            border: none;
-            color: #fff;
-            font-size: 22px;
-            padding: 4px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            z-index: 10;
-        }
-        .player-close:active {
-            background: rgba(255,0,0,0.4);
-        }
-
-        /* Ayarlar ekranı (basit) */
-        #settings-screen {
-            padding: 20px;
-        }
-        #settings-screen h2 {
-            margin-bottom: 20px;
-        }
-        .settings-item {
-            padding: 14px 0;
-            border-bottom: 1px solid #222;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .settings-item .label {
-            color: #ccc;
-        }
-        .settings-item .value {
-            color: #00bfff;
-        }
-        .settings-close {
-            margin-top: 30px;
-            padding: 12px;
-            background: #333;
-            border: none;
-            color: #fff;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-            width: 100%;
-        }
-        .settings-close:active {
-            background: #444;
-        }
-
-        /* Kaydırma çubuğu */
-        .content::-webkit-scrollbar {
-            width: 4px;
-        }
-        .content::-webkit-scrollbar-track {
-            background: #0a0a0a;
-        }
-        .content::-webkit-scrollbar-thumb {
-            background: #333;
-            border-radius: 4px;
-        }
-
-        /* responsive düzenlemeler */
-        @media (max-width: 600px) {
-            .stream-card {
-                width: calc(50% - 12px);
-            }
-        }
-        @media (max-width: 400px) {
-            .stream-card {
-                width: calc(100% - 12px);
-            }
-        }
-
-        /* Loading */
-        .loading {
-            text-align: center;
-            padding: 40px 0;
-            color: #666;
-            font-size: 14px;
-        }
-        .no-data {
-            text-align: center;
-            padding: 40px 0;
-            color: #555;
-        }
-
-        /* Favori ve son çalınan butonları (header altı) */
-        .quick-actions {
-            display: flex;
-            gap: 12px;
-            padding: 8px 16px;
-            background: #0f0f0f;
-            border-bottom: 1px solid #1a1a1a;
-            flex-shrink: 0;
-        }
-        .quick-actions .qa-btn {
-            background: #1a1a1a;
-            border: 1px solid #2a2a2a;
-            color: #aaa;
-            padding: 6px 18px;
-            border-radius: 20px;
-            font-size: 12px;
-            cursor: pointer;
-        }
-        .quick-actions .qa-btn:active {
-            background: #2a2a2a;
-        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background:#0a0a0a; color:#fff; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; font-size:14px; height:100vh; overflow:hidden; user-select:none; }
+        .screen { display:none; width:100%; height:100%; position:absolute; top:0; left:0; flex-direction:column; background:#0a0a0a; }
+        .screen.active { display:flex; }
+        #login-screen { justify-content:center; align-items:center; padding:20px; }
+        .login-box { background:#1a1a1a; border-radius:8px; padding:30px 25px; max-width:400px; width:100%; box-shadow:0 0 20px rgba(0,0,0,0.8); }
+        .login-box h1 { font-size:28px; font-weight:300; text-align:center; margin-bottom:20px; letter-spacing:2px; color:#00bfff; }
+        .login-box label { display:block; margin:12px 0 4px; font-size:12px; color:#aaa; }
+        .login-box input { width:100%; padding:10px 12px; background:#2a2a2a; border:1px solid #333; border-radius:4px; color:#fff; font-size:14px; }
+        .login-box input:focus { border-color:#00bfff; outline:none; }
+        .login-box .btn { width:100%; padding:12px; margin-top:20px; background:#00bfff; border:none; border-radius:4px; color:#000; font-size:16px; font-weight:bold; cursor:pointer; }
+        .login-box .btn:active { background:#0099cc; }
+        .login-box .url-or { text-align:center; margin:12px 0; color:#555; font-size:13px; }
+        .login-box .btn-secondary { background:#333; color:#fff; margin-top:5px; }
+        .login-box .btn-secondary:active { background:#444; }
+        #login-status { text-align:center; margin-top:12px; font-size:13px; color:#ff6b6b; }
+        .header { display:flex; justify-content:space-between; align-items:center; padding:12px 18px; background:#111; border-bottom:1px solid #222; flex-shrink:0; }
+        .header .logo { font-size:22px; font-weight:300; color:#00bfff; letter-spacing:1px; }
+        .header .time { font-size:14px; color:#aaa; }
+        .header .settings-btn { background:none; border:none; color:#aaa; font-size:20px; cursor:pointer; padding:0 8px; }
+        .header .settings-btn:active { color:#fff; }
+        .tabs { display:flex; background:#111; border-bottom:1px solid #222; flex-shrink:0; }
+        .tabs .tab { flex:1; text-align:center; padding:12px 0; font-size:14px; font-weight:500; color:#888; cursor:pointer; border-bottom:3px solid transparent; }
+        .tabs .tab.active { color:#fff; border-bottom-color:#00bfff; }
+        .tabs .tab:active { background:#1a1a1a; }
+        .content { flex:1; overflow-y:auto; padding:12px 16px 80px; }
+        .content h2 { font-size:16px; font-weight:400; margin:6px 0 12px; color:#ccc; }
+        .cat-grid { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+        .cat-item { background:#1e1e1e; padding:10px 16px; border-radius:20px; font-size:13px; color:#ddd; cursor:pointer; border:1px solid #2a2a2a; }
+        .cat-item.active { background:#00bfff; color:#000; border-color:#00bfff; }
+        .cat-item:active { opacity:0.7; }
+        .stream-grid { display:flex; flex-wrap:wrap; gap:12px; justify-content:flex-start; }
+        .stream-card { width:calc(33.333% - 12px); background:#141414; border-radius:6px; overflow:hidden; cursor:pointer; border:1px solid #222; }
+        .stream-card:active { border-color:#00bfff; }
+        .stream-card .thumb { width:100%; padding-top:56.25%; background:#1a1a1a; position:relative; overflow:hidden; }
+        .stream-card .thumb img { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; background:#222; }
+        .stream-card .info { padding:8px 10px; }
+        .stream-card .info .title { font-size:13px; font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .stream-card .info .sub { font-size:11px; color:#777; margin-top:2px; }
+        .back-btn { display:inline-block; padding:6px 14px; background:#222; border-radius:4px; color:#aaa; cursor:pointer; font-size:13px; margin-bottom:12px; border:none; }
+        .back-btn:active { background:#333; }
+        #player-screen { flex-direction:column; background:#000; }
+        #player-screen .video-wrap { flex:1; background:#000; display:flex; align-items:center; justify-content:center; position:relative; }
+        #player-screen video { width:100%; height:100%; max-height:70vh; background:#000; }
+        #player-screen .player-controls { padding:12px 18px; background:#111; border-top:1px solid #222; }
+        #player-screen .player-controls .title { font-size:16px; margin-bottom:4px; }
+        #player-screen .player-controls .epg { font-size:12px; color:#888; }
+        .player-close { position:absolute; top:12px; right:16px; background:rgba(0,0,0,0.6); border:none; color:#fff; font-size:22px; padding:4px 12px; border-radius:4px; cursor:pointer; z-index:10; }
+        .player-close:active { background:rgba(255,0,0,0.4); }
+        #settings-screen { padding:20px; }
+        #settings-screen h2 { margin-bottom:20px; }
+        .settings-item { padding:14px 0; border-bottom:1px solid #222; display:flex; justify-content:space-between; align-items:center; }
+        .settings-item .label { color:#ccc; }
+        .settings-item .value { color:#00bfff; }
+        .settings-close { margin-top:30px; padding:12px; background:#333; border:none; color:#fff; border-radius:4px; font-size:16px; cursor:pointer; width:100%; }
+        .settings-close:active { background:#444; }
+        .content::-webkit-scrollbar { width:4px; }
+        .content::-webkit-scrollbar-track { background:#0a0a0a; }
+        .content::-webkit-scrollbar-thumb { background:#333; border-radius:4px; }
+        @media (max-width:600px) { .stream-card { width:calc(50% - 12px); } }
+        @media (max-width:400px) { .stream-card { width:calc(100% - 12px); } }
+        .loading { text-align:center; padding:40px 0; color:#666; font-size:14px; }
+        .no-data { text-align:center; padding:40px 0; color:#555; }
+        .quick-actions { display:flex; gap:12px; padding:8px 16px; background:#0f0f0f; border-bottom:1px solid #1a1a1a; flex-shrink:0; }
+        .quick-actions .qa-btn { background:#1a1a1a; border:1px solid #2a2a2a; color:#aaa; padding:6px 18px; border-radius:20px; font-size:12px; cursor:pointer; }
+        .quick-actions .qa-btn:active { background:#2a2a2a; }
     </style>
 </head>
 <body>
 
-<!-- ============ GİRİŞ EKRANI ============ -->
+<!-- GİRİŞ -->
 <div id="login-screen" class="screen active">
     <div class="login-box">
         <h1>DuplexPlay</h1>
-        <label>Sunucu (IP veya domain)</label>
+        <label>Sunucu</label>
         <input type="text" id="server-input" value="mag.plusgerman.eu" placeholder="örn: mag.plusgerman.eu">
         <label>Port</label>
         <input type="text" id="port-input" value="8080" placeholder="örn: 8080">
@@ -436,42 +88,36 @@
         <input type="password" id="password-input" value="demo" placeholder="şifre">
         <button class="btn" id="login-btn">Giriş Yap</button>
         <div class="url-or">— veya —</div>
-        <label>Oynatma Listesi URL'si (Xtream)</label>
+        <label>Xtream URL</label>
         <input type="text" id="url-input" placeholder="http://sunucu:port/get.php?username=...&password=...">
         <button class="btn btn-secondary" id="url-login-btn">URL ile Giriş</button>
         <div id="login-status"></div>
     </div>
 </div>
 
-<!-- ============ ANA EKRAN ============ -->
+<!-- ANA EKRAN -->
 <div id="main-screen" class="screen">
     <div class="header">
         <span class="logo">DuplexPlay</span>
         <span class="time" id="header-time">--:--</span>
         <button class="settings-btn" id="settings-open">⚙</button>
     </div>
-
-    <!-- Hızlı aksiyon butonları (son çalınanlar, sık kullanılanlar) -->
     <div class="quick-actions">
         <button class="qa-btn" id="recent-btn">Son çalınanlar</button>
         <button class="qa-btn" id="favorites-btn">Sık kullanılanlar</button>
     </div>
-
-    <!-- Sekmeler -->
     <div class="tabs" id="main-tabs">
         <div class="tab active" data-tab="live">Canlı Kanallar</div>
         <div class="tab" data-tab="vod">Filmler</div>
         <div class="tab" data-tab="series">Dizi</div>
         <div class="tab" data-tab="catchup">Yeniden oynatma</div>
     </div>
-
-    <!-- İçerik -->
     <div class="content" id="content-area">
         <div id="dynamic-content"></div>
     </div>
 </div>
 
-<!-- ============ OYNATMA EKRANI ============ -->
+<!-- OYNATICI -->
 <div id="player-screen" class="screen">
     <div class="video-wrap">
         <video id="player-video" controls autoplay></video>
@@ -483,607 +129,413 @@
     </div>
 </div>
 
-<!-- ============ AYARLAR EKRANI ============ -->
+<!-- AYARLAR -->
 <div id="settings-screen" class="screen">
     <h2>Ayarlar</h2>
-    <div class="settings-item">
-        <span class="label">Dil</span>
-        <span class="value">Türkçe</span>
-    </div>
-    <div class="settings-item">
-        <span class="label">Arka fon</span>
-        <span class="value">Koyu</span>
-    </div>
-    <div class="settings-item">
-        <span class="label">Küçük Resim Kalitesi</span>
-        <span class="value">Orta</span>
-    </div>
-    <div class="settings-item">
-        <span class="label">Sıralama</span>
-        <span class="value">Varsayılan</span>
-    </div>
+    <div class="settings-item"><span class="label">Dil</span><span class="value">Türkçe</span></div>
+    <div class="settings-item"><span class="label">Arka fon</span><span class="value">Koyu</span></div>
+    <div class="settings-item"><span class="label">Küçük Resim Kalitesi</span><span class="value">Orta</span></div>
+    <div class="settings-item"><span class="label">Sıralama</span><span class="value">Varsayılan</span></div>
     <button class="settings-close" id="settings-close">Kapat</button>
 </div>
 
 <script>
-    /* ============================================================
-       ES5 - SAFE JAVASCRIPT (Chromium 34 / webOS 2.2.3 uyumlu)
-       ============================================================ */
+/* ================================================================
+   SAFE ES5 - Chromium 34 / webOS 2.2.3 uyumlu
+   ================================================================ */
 
-    // ---- Global değişkenler ----
-    var baseUrl = '';               // http://sunucu:port/player_api.php?username=...&password=...
-    var serverInfo = {};            // sunucu bilgileri
-    var liveStreams = [];
-    var vodStreams = [];
-    var seriesStreams = [];
-    var liveCategories = [];
-    var vodCategories = [];
-    var seriesCategories = [];
-    var currentTab = 'live';        // live, vod, series, catchup
-    var currentCategoryId = 0;
-    var currentCategoryName = 'Tümü';
-    var currentStreams = [];
-    var playerActive = false;
+var baseUrl = '';
+var serverInfo = {};
+var liveStreams = [];
+var vodStreams = [];
+var seriesStreams = [];
+var liveCategories = [];
+var vodCategories = [];
+var seriesCategories = [];
+var currentTab = 'live';
+var currentCategoryId = 0;
+var currentCategoryName = 'Tümü';
 
-    // ---- DOM referansları ----
-    var loginScreen = document.getElementById('login-screen');
-    var mainScreen = document.getElementById('main-screen');
-    var playerScreen = document.getElementById('player-screen');
-    var settingsScreen = document.getElementById('settings-screen');
+var loginScreen = document.getElementById('login-screen');
+var mainScreen = document.getElementById('main-screen');
+var playerScreen = document.getElementById('player-screen');
+var settingsScreen = document.getElementById('settings-screen');
 
-    var serverInput = document.getElementById('server-input');
-    var portInput = document.getElementById('port-input');
-    var usernameInput = document.getElementById('username-input');
-    var passwordInput = document.getElementById('password-input');
-    var urlInput = document.getElementById('url-input');
-    var loginBtn = document.getElementById('login-btn');
-    var urlLoginBtn = document.getElementById('url-login-btn');
-    var loginStatus = document.getElementById('login-status');
+var serverInput = document.getElementById('server-input');
+var portInput = document.getElementById('port-input');
+var usernameInput = document.getElementById('username-input');
+var passwordInput = document.getElementById('password-input');
+var urlInput = document.getElementById('url-input');
+var loginBtn = document.getElementById('login-btn');
+var urlLoginBtn = document.getElementById('url-login-btn');
+var loginStatus = document.getElementById('login-status');
 
-    var headerTime = document.getElementById('header-time');
-    var settingsOpen = document.getElementById('settings-open');
-    var settingsClose = document.getElementById('settings-close');
-    var recentBtn = document.getElementById('recent-btn');
-    var favoritesBtn = document.getElementById('favorites-btn');
+var headerTime = document.getElementById('header-time');
+var settingsOpen = document.getElementById('settings-open');
+var settingsClose = document.getElementById('settings-close');
+var recentBtn = document.getElementById('recent-btn');
+var favoritesBtn = document.getElementById('favorites-btn');
 
-    var tabs = document.getElementsByClassName('tab');
-    var contentArea = document.getElementById('dynamic-content');
+var tabs = document.getElementsByClassName('tab');
+var contentArea = document.getElementById('dynamic-content');
 
-    var playerVideo = document.getElementById('player-video');
-    var playerTitle = document.getElementById('player-title');
-    var playerEpg = document.getElementById('player-epg');
-    var playerClose = document.getElementById('player-close');
+var playerVideo = document.getElementById('player-video');
+var playerTitle = document.getElementById('player-title');
+var playerEpg = document.getElementById('player-epg');
+var playerClose = document.getElementById('player-close');
 
-    // ---- Yardımcı fonksiyonlar ----
-
-    function showScreen(screenId) {
-        var screens = document.getElementsByClassName('screen');
-        for (var i = 0; i < screens.length; i++) {
-            screens[i].classList.remove('active');
-        }
-        document.getElementById(screenId).classList.add('active');
+function showScreen(id) {
+    var screens = document.getElementsByClassName('screen');
+    for (var i = 0; i < screens.length; i++) {
+        screens[i].classList.remove('active');
     }
+    document.getElementById(id).classList.add('active');
+}
 
-    function formatTime() {
-        var d = new Date();
-        var h = d.getHours();
-        var m = d.getMinutes();
-        var s = d.getSeconds();
-        return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
-    }
+function formatTime() {
+    var d = new Date();
+    var h = d.getHours();
+    var m = d.getMinutes();
+    var s = d.getSeconds();
+    return (h<10?'0':'')+h+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+}
+function updateClock() { headerTime.textContent = formatTime(); }
+setInterval(updateClock, 1000);
+updateClock();
 
-    function updateClock() {
-        headerTime.textContent = formatTime();
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
+function getParameterByName(url, name) {
+    name = name.replace(/[\[\]]/g, '\\$&');
+    var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)');
+    var results = regex.exec(url);
+    if (!results) return null;
+    if (!results[2]) return '';
+    return decodeURIComponent(results[2].replace(/\+/g, ' '));
+}
 
-    // ---- URL'den parametre çıkarma (ES5) ----
-    function getParameterByName(url, name) {
-        name = name.replace(/[\[\]]/g, '\\$&');
-        var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)');
-        var results = regex.exec(url);
-        if (!results) return null;
-        if (!results[2]) return '';
-        return decodeURIComponent(results[2].replace(/\+/g, ' '));
-    }
+function escapeHtml(text) {
+    if (!text) return '';
+    var map = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'};
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+}
 
-    // ---- Xtream API isteği (XMLHttpRequest) ----
-    function xtreamRequest(endpoint, callback) {
-        var fullUrl = baseUrl + '&' + endpoint;
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', fullUrl, true);
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === 4) {
-                if (xhr.status === 200) {
-                    try {
-                        var data = JSON.parse(xhr.responseText);
-                        callback(null, data);
-                    } catch (e) {
-                        callback('JSON parse hatası: ' + e.message, null);
-                    }
-                } else {
-                    callback('HTTP hatası: ' + xhr.status, null);
+// ---- Xtream isteği (zaman aşımı eklendi) ----
+function xtreamRequest(endpoint, callback) {
+    var fullUrl = baseUrl + '&' + endpoint;
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', fullUrl, true);
+    xhr.timeout = 10000; // 10 saniye
+    xhr.ontimeout = function() {
+        callback('Zaman aşımı (10 sn)', null);
+    };
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    callback(null, data);
+                } catch(e) {
+                    callback('JSON ayrıştırma hatası: ' + e.message, null);
                 }
-            }
-        };
-        xhr.send();
-    }
-
-    // ---- Giriş işlemi ----
-    function doLogin(server, port, username, password) {
-        baseUrl = 'http://' + server + ':' + port + '/player_api.php?username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password);
-        loginStatus.textContent = 'Bağlanıyor...';
-        loginStatus.style.color = '#ffb347';
-
-        // Önce sunucu bilgilerini al (test)
-        xtreamRequest('action=get_live_streams', function(err, data) {
-            if (err) {
-                loginStatus.textContent = 'Hata: ' + err;
-                loginStatus.style.color = '#ff6b6b';
-                return;
-            }
-            if (data && data.user_info) {
-                serverInfo = data.user_info;
-                // Başarılı, verileri çek
-                fetchAllData(function() {
-                    loginStatus.textContent = 'Giriş başarılı!';
-                    loginStatus.style.color = '#6bff6b';
-                    setTimeout(function() {
-                        showScreen('main-screen');
-                        loadTab('live');
-                    }, 500);
-                });
             } else {
-                loginStatus.textContent = 'Geçersiz yanıt, lütfen bilgileri kontrol edin.';
-                loginStatus.style.color = '#ff6b6b';
-            }
-        });
-    }
-
-    // ---- Tüm verileri çek (live, vod, series, kategoriler) ----
-    function fetchAllData(callback) {
-        var completed = 0;
-        var total = 4;
-        var hasError = false;
-
-        function checkDone() {
-            completed++;
-            if (completed === total && !hasError) {
-                callback();
+                callback('HTTP ' + xhr.status, null);
             }
         }
+    };
+    xhr.send();
+}
 
-        // Canlı yayınlar
-        xtreamRequest('action=get_live_streams', function(err, data) {
-            if (!err && data && data.live_streams) {
-                liveStreams = data.live_streams;
-                // Kategorileri de çek
-                xtreamRequest('action=get_live_categories', function(err2, catData) {
-                    if (!err2 && catData && catData.categories) {
-                        liveCategories = catData.categories;
-                    } else {
-                        liveCategories = [];
-                    }
-                    checkDone();
-                });
+// ---- Tüm verileri çek ----
+function fetchAllData(callback) {
+    var completed = 0;
+    var total = 3;
+    var hasError = false;
+
+    function checkDone() {
+        completed++;
+        if (completed >= total) {
+            callback();
+        }
+    }
+
+    // Canlı
+    xtreamRequest('action=get_live_streams', function(err, data) {
+        if (!err && data && data.live_streams) {
+            liveStreams = data.live_streams;
+        } else {
+            liveStreams = [];
+            hasError = true;
+        }
+        // Kategorileri al
+        xtreamRequest('action=get_live_categories', function(err2, catData) {
+            if (!err2 && catData && catData.categories) {
+                liveCategories = catData.categories;
             } else {
-                liveStreams = [];
                 liveCategories = [];
-                hasError = true;
-                checkDone();
             }
+            checkDone();
         });
+    });
 
-        // VOD filmler
-        xtreamRequest('action=get_vod_streams', function(err, data) {
-            if (!err && data && data.vod_streams) {
-                vodStreams = data.vod_streams;
-                xtreamRequest('action=get_vod_categories', function(err2, catData) {
-                    if (!err2 && catData && catData.categories) {
-                        vodCategories = catData.categories;
-                    } else {
-                        vodCategories = [];
-                    }
-                    checkDone();
-                });
+    // VOD
+    xtreamRequest('action=get_vod_streams', function(err, data) {
+        if (!err && data && data.vod_streams) {
+            vodStreams = data.vod_streams;
+        } else {
+            vodStreams = [];
+            hasError = true;
+        }
+        xtreamRequest('action=get_vod_categories', function(err2, catData) {
+            if (!err2 && catData && catData.categories) {
+                vodCategories = catData.categories;
             } else {
-                vodStreams = [];
                 vodCategories = [];
-                hasError = true;
-                checkDone();
             }
+            checkDone();
         });
+    });
 
-        // Diziler
-        xtreamRequest('action=get_series_streams', function(err, data) {
-            if (!err && data && data.series_streams) {
-                seriesStreams = data.series_streams;
-                xtreamRequest('action=get_series_categories', function(err2, catData) {
-                    if (!err2 && catData && catData.categories) {
-                        seriesCategories = catData.categories;
-                    } else {
-                        seriesCategories = [];
-                    }
-                    checkDone();
-                });
+    // Diziler
+    xtreamRequest('action=get_series_streams', function(err, data) {
+        if (!err && data && data.series_streams) {
+            seriesStreams = data.series_streams;
+        } else {
+            seriesStreams = [];
+            hasError = true;
+        }
+        xtreamRequest('action=get_series_categories', function(err2, catData) {
+            if (!err2 && catData && catData.categories) {
+                seriesCategories = catData.categories;
             } else {
-                seriesStreams = [];
                 seriesCategories = [];
-                hasError = true;
-                checkDone();
             }
+            checkDone();
         });
+    });
+}
 
-        // Catch-up için ayrı istek yok, sadece canlı akışlarda catchup var.
-        // Bir count olarak sayacağız
-        // Hemen checkDone tetiklenmesin, yukarıdaki 3 istek tamamlanınca callback çalışır.
-        // Ama toplamda 3 ana istek + kategori istekleri, ama biz 4 saydık.
-        // Daha basit: live ve vod ve series için sadece ana veri çekimi, kategorileri de içlerinde halledelim.
-        // Ancak yukarıda her birinde kategori isteği yapıyoruz, toplamda 3 ana + 3 kategori = 6, ama sayacı 3 yapıp kategori isteklerini ayrı saymadan checkDone içinde sayabiliriz.
-        // Düzeltelim: ana istekler 3, her biri kendi içinde kategori çekip checkDone çağırır.
-        // O yüzden completed sayacını 3'ten başlatıp her bir ana istek bittiğinde +1, kategori isteği bittiğinde de +1 yapalım.
-        // Bunun için daha net bir yapı kuralım.
-        // Basitçe: her bir ana istekte, veri çekildikten sonra ilgili kategori isteğini yapıp, o da bittiğinde checkDone çağır.
-        // Aşağıda zaten öyle yapıyoruz.
-        // total = 3 (live, vod, series) . Her birinin içinde checkDone çağırıyoruz.
-        // Ancak liveStreams içinde kategori isteği ayrı.
-        // Başlangıçta completed = 0, total = 3 olsun.
-        // Ama her bir ana istekte hata olursa da checkDone çağır.
-        // Şimdi düzeltelim: total = 3.
-        var completedMain = 0;
-        var totalMain = 3;
-        function checkMain() {
-            completedMain++;
-            if (completedMain === totalMain) {
-                callback();
-            }
-        }
+// ---- Giriş ----
+function doLogin(server, port, username, password) {
+    baseUrl = 'http://' + server + ':' + port + '/player_api.php?username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password);
+    loginStatus.textContent = 'Bağlanıyor...';
+    loginStatus.style.color = '#ffb347';
 
-        // live
-        xtreamRequest('action=get_live_streams', function(err, data) {
-            if (!err && data && data.live_streams) {
-                liveStreams = data.live_streams;
-                xtreamRequest('action=get_live_categories', function(err2, catData) {
-                    if (!err2 && catData && catData.categories) {
-                        liveCategories = catData.categories;
-                    }
-                    checkMain();
-                });
-            } else {
-                liveStreams = [];
-                liveCategories = [];
-                checkMain();
-            }
-        });
-
-        // vod
-        xtreamRequest('action=get_vod_streams', function(err, data) {
-            if (!err && data && data.vod_streams) {
-                vodStreams = data.vod_streams;
-                xtreamRequest('action=get_vod_categories', function(err2, catData) {
-                    if (!err2 && catData && catData.categories) {
-                        vodCategories = catData.categories;
-                    }
-                    checkMain();
-                });
-            } else {
-                vodStreams = [];
-                vodCategories = [];
-                checkMain();
-            }
-        });
-
-        // series
-        xtreamRequest('action=get_series_streams', function(err, data) {
-            if (!err && data && data.series_streams) {
-                seriesStreams = data.series_streams;
-                xtreamRequest('action=get_series_categories', function(err2, catData) {
-                    if (!err2 && catData && catData.categories) {
-                        seriesCategories = catData.categories;
-                    }
-                    checkMain();
-                });
-            } else {
-                seriesStreams = [];
-                seriesCategories = [];
-                checkMain();
-            }
-        });
-    }
-
-    // ---- Tab yükleme ----
-    function loadTab(tab) {
-        currentTab = tab;
-        // Aktif tab vurgusu
-        for (var i = 0; i < tabs.length; i++) {
-            tabs[i].classList.remove('active');
-            if (tabs[i].getAttribute('data-tab') === tab) {
-                tabs[i].classList.add('active');
-            }
-        }
-        currentCategoryId = 0;
-        currentCategoryName = 'Tümü';
-        renderCategoryView(tab);
-    }
-
-    // ---- Kategori görünümü ----
-    function renderCategoryView(tab) {
-        var catList = [];
-        var title = '';
-        if (tab === 'live') {
-            catList = liveCategories;
-            title = 'Canlı Kategoriler';
-        } else if (tab === 'vod') {
-            catList = vodCategories;
-            title = 'Film Kategorileri';
-        } else if (tab === 'series') {
-            catList = seriesCategories;
-            title = 'Dizi Kategorileri';
-        } else if (tab === 'catchup') {
-            // Catch-up sadece canlı kanalların geri izleme özelliği, basitçe canlı kategorileri gösterip catchup varsa oynat
-            catList = liveCategories;
-            title = 'Yeniden oynatma (Catch-up)';
-        }
-
-        var html = '<h2>' + title + '</h2>';
-        html += '<div class="cat-grid">';
-        html += '<div class="cat-item active" data-cat-id="0" data-cat-name="Tümü">Tümü</div>';
-        for (var i = 0; i < catList.length; i++) {
-            var cat = catList[i];
-            html += '<div class="cat-item" data-cat-id="' + cat.category_id + '" data-cat-name="' + escapeHtml(cat.category_name) + '">' + escapeHtml(cat.category_name) + '</div>';
-        }
-        html += '</div>';
-        html += '<div id="stream-list-container"></div>';
-        contentArea.innerHTML = html;
-
-        // Kategori tıklama olayları
-        var catItems = contentArea.getElementsByClassName('cat-item');
-        for (var j = 0; j < catItems.length; j++) {
-            catItems[j].addEventListener('click', function(e) {
-                var target = e.currentTarget;
-                // Aktif sınıfını değiştir
-                var allCats = contentArea.getElementsByClassName('cat-item');
-                for (var k = 0; k < allCats.length; k++) {
-                    allCats[k].classList.remove('active');
-                }
-                target.classList.add('active');
-                var catId = parseInt(target.getAttribute('data-cat-id'), 10);
-                var catName = target.getAttribute('data-cat-name');
-                currentCategoryId = catId;
-                currentCategoryName = catName;
-                renderStreams(tab, catId);
-            });
-        }
-
-        // İlk kategori seçili, Tümü yani 0
-        renderStreams(tab, 0);
-    }
-
-    // ---- Stream listesi ----
-    function renderStreams(tab, categoryId) {
-        var streams = [];
-        if (tab === 'live') {
-            streams = liveStreams;
-        } else if (tab === 'vod') {
-            streams = vodStreams;
-        } else if (tab === 'series') {
-            streams = seriesStreams;
-        } else if (tab === 'catchup') {
-            streams = liveStreams; // catch-up için canlı kanallar
-        }
-
-        // Filtrele
-        var filtered = [];
-        for (var i = 0; i < streams.length; i++) {
-            var s = streams[i];
-            if (categoryId === 0 || s.category_id === categoryId) {
-                filtered.push(s);
-            }
-        }
-
-        var container = document.getElementById('stream-list-container');
-        if (!container) return;
-
-        if (filtered.length === 0) {
-            container.innerHTML = '<div class="no-data">Bu kategoride yayın yok.</div>';
-            return;
-        }
-
-        var html = '<div class="stream-grid">';
-        for (var j = 0; j < filtered.length; j++) {
-            var item = filtered[j];
-            var name = item.name || 'İsimsiz';
-            var icon = item.stream_icon || '';
-            var id = item.stream_id || item.series_id || item.id;
-            // stream_type: live, movie, series
-            var type = 'live';
-            if (tab === 'vod') type = 'movie';
-            if (tab === 'series') type = 'series';
-            if (tab === 'catchup') type = 'catchup';
-
-            html += '<div class="stream-card" data-id="' + id + '" data-type="' + type + '" data-name="' + escapeHtml(name) + '" data-icon="' + escapeHtml(icon) + '">';
-            html += '<div class="thumb">';
-            if (icon) {
-                html += '<img src="' + escapeHtml(icon) + '" alt="" onerror="this.style.display=\'none\'">';
-            } else {
-                html += '<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;">No Image</div>';
-            }
-            html += '</div>';
-            html += '<div class="info"><div class="title">' + escapeHtml(name) + '</div>';
-            if (item.rating) {
-                html += '<div class="sub">⭐ ' + item.rating + '</div>';
-            }
-            html += '</div></div>';
-        }
-        html += '</div>';
-        container.innerHTML = html;
-
-        // Tıklama olayları
-        var cards = container.getElementsByClassName('stream-card');
-        for (var k = 0; k < cards.length; k++) {
-            cards[k].addEventListener('click', function(e) {
-                var card = e.currentTarget;
-                var id = card.getAttribute('data-id');
-                var type = card.getAttribute('data-type');
-                var name = card.getAttribute('data-name');
-                playStream(id, type, name);
-            });
-        }
-    }
-
-    // ---- Oynatma işlevi ----
-    function playStream(id, type, name) {
-        // player ekranını göster
-        showScreen('player-screen');
-        playerTitle.textContent = name || 'Yayın';
-        playerEpg.textContent = 'EPG verisi yükleniyor...';
-
-        var url = '';
-        var username = usernameInput.value;
-        var password = passwordInput.value;
-        var server = serverInput.value;
-        var port = portInput.value;
-
-        if (type === 'live' || type === 'catchup') {
-            url = 'http://' + server + ':' + port + '/live/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + id + '.ts';
-        } else if (type === 'movie') {
-            url = 'http://' + server + ':' + port + '/movie/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + id + '.ts';
-        } else if (type === 'series') {
-            // Dizi için sezon/bölüm seçimi gerekir, basitçe ilk bölümü oynatmak için seri detayı alalım.
-            // Burada basitçe bir uyarı verip vazgeçelim, veya seri ID'si ile bir bölüm oynatma deneyelim.
-            // Kullanıcıya sezon seçimi yapması için bir diyalog açabiliriz, ama bu basit sürümde sadece uyarı verip geri dönelim.
-            alert('Dizi oynatma için sezon/bölüm seçimi henüz desteklenmiyor.\nLütfen canlı veya film seçin.');
+    // Verileri çek
+    fetchAllData(function() {
+        // Başarılı kabul et
+        loginStatus.textContent = 'Giriş başarılı!';
+        loginStatus.style.color = '#6bff6b';
+        setTimeout(function() {
             showScreen('main-screen');
-            return;
-        } else {
-            alert('Geçersiz yayın türü.');
-            return;
-        }
-
-        playerVideo.src = url;
-        playerVideo.load();
-        playerVideo.play();
-
-        // EPG çek (canlı için)
-        if (type === 'live' || type === 'catchup') {
-            xtreamRequest('action=get_short_epg&stream_id=' + id, function(err, data) {
-                if (!err && data && data.epg_data) {
-                    var epgText = '';
-                    for (var i = 0; i < data.epg_data.length; i++) {
-                        var ep = data.epg_data[i];
-                        epgText += ep.title + ' (' + ep.start + ' - ' + ep.end + ') ';
-                    }
-                    playerEpg.textContent = epgText || 'EPG verisi yok';
-                } else {
-                    playerEpg.textContent = 'EPG verisi yok';
-                }
-            });
-        } else {
-            playerEpg.textContent = 'VOD - ' + name;
-        }
-    }
-
-    // ---- Yardımcı escape ----
-    function escapeHtml(text) {
-        if (!text) return '';
-        var map = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;'
-        };
-        return text.replace(/[&<>"']/g, function(m) { return map[m]; });
-    }
-
-    // ---- Olay bağlamaları ----
-
-    // Giriş butonu
-    loginBtn.addEventListener('click', function() {
-        var server = serverInput.value.trim();
-        var port = portInput.value.trim();
-        var username = usernameInput.value.trim();
-        var password = passwordInput.value.trim();
-        if (!server || !port || !username || !password) {
-            loginStatus.textContent = 'Lütfen tüm alanları doldurun.';
-            loginStatus.style.color = '#ff6b6b';
-            return;
-        }
-        doLogin(server, port, username, password);
+            loadTab('live');
+        }, 400);
     });
+}
 
-    // URL ile giriş
-    urlLoginBtn.addEventListener('click', function() {
-        var url = urlInput.value.trim();
-        if (!url) {
-            loginStatus.textContent = 'Lütfen geçerli bir URL girin.';
-            loginStatus.style.color = '#ff6b6b';
-            return;
-        }
-        // URL'den username, password, server, port çıkar
-        var username = getParameterByName(url, 'username');
-        var password = getParameterByName(url, 'password');
-        // Sunucu ve port: URL'nin baş kısmı http://sunucu:port/...
-        var serverPort = '';
-        var match = url.match(/^https?:\/\/([^\/:]+)(?::(\d+))?/);
-        if (match) {
-            serverPort = match[1];
-            var port = match[2] || '80';
-            if (username && password) {
-                doLogin(serverPort, port, username, password);
-                return;
-            }
-        }
-        loginStatus.textContent = 'URL'den kullanıcı adı/şifre alınamadı. Lütfen manuel giriş yapın.';
-        loginStatus.style.color = '#ff6b6b';
-    });
-
-    // Tab tıklama
+// ---- Tab ve kategori görünümü ----
+function loadTab(tab) {
+    currentTab = tab;
     for (var i = 0; i < tabs.length; i++) {
-        tabs[i].addEventListener('click', function() {
-            var tab = this.getAttribute('data-tab');
-            loadTab(tab);
+        tabs[i].classList.remove('active');
+        if (tabs[i].getAttribute('data-tab') === tab) {
+            tabs[i].classList.add('active');
+        }
+    }
+    currentCategoryId = 0;
+    currentCategoryName = 'Tümü';
+    renderCategoryView(tab);
+}
+
+function renderCategoryView(tab) {
+    var catList = [];
+    var title = '';
+    if (tab === 'live') { catList = liveCategories; title = 'Canlı Kategoriler'; }
+    else if (tab === 'vod') { catList = vodCategories; title = 'Film Kategorileri'; }
+    else if (tab === 'series') { catList = seriesCategories; title = 'Dizi Kategorileri'; }
+    else if (tab === 'catchup') { catList = liveCategories; title = 'Yeniden oynatma (Catch-up)'; }
+
+    var html = '<h2>' + title + '</h2>';
+    html += '<div class="cat-grid">';
+    html += '<div class="cat-item active" data-cat-id="0" data-cat-name="Tümü">Tümü</div>';
+    for (var i = 0; i < catList.length; i++) {
+        var cat = catList[i];
+        html += '<div class="cat-item" data-cat-id="' + cat.category_id + '" data-cat-name="' + escapeHtml(cat.category_name) + '">' + escapeHtml(cat.category_name) + '</div>';
+    }
+    html += '</div><div id="stream-list-container"></div>';
+    contentArea.innerHTML = html;
+
+    var catItems = contentArea.getElementsByClassName('cat-item');
+    for (var j = 0; j < catItems.length; j++) {
+        catItems[j].addEventListener('click', function(e) {
+            var target = e.currentTarget;
+            var all = contentArea.getElementsByClassName('cat-item');
+            for (var k = 0; k < all.length; k++) all[k].classList.remove('active');
+            target.classList.add('active');
+            var catId = parseInt(target.getAttribute('data-cat-id'), 10);
+            var catName = target.getAttribute('data-cat-name');
+            currentCategoryId = catId;
+            currentCategoryName = catName;
+            renderStreams(tab, catId);
         });
     }
+    renderStreams(tab, 0);
+}
 
-    // Ayarlar
-    settingsOpen.addEventListener('click', function() {
-        showScreen('settings-screen');
-    });
-    settingsClose.addEventListener('click', function() {
-        showScreen('main-screen');
-    });
+function renderStreams(tab, categoryId) {
+    var streams = [];
+    if (tab === 'live') streams = liveStreams;
+    else if (tab === 'vod') streams = vodStreams;
+    else if (tab === 'series') streams = seriesStreams;
+    else if (tab === 'catchup') streams = liveStreams;
 
-    // Oynatıcı kapat
-    playerClose.addEventListener('click', function() {
-        playerVideo.pause();
-        playerVideo.src = '';
-        showScreen('main-screen');
-    });
-
-    // Son çalınanlar / Favoriler (placeholder)
-    recentBtn.addEventListener('click', function() {
-        alert('Son çalınanlar listesi henüz uygulanmadı.');
-    });
-    favoritesBtn.addEventListener('click', function() {
-        alert('Sık kullanılanlar yöneticisi henüz uygulanmadı.');
-    });
-
-    // Klavye Enter ile giriş
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && loginScreen.classList.contains('active')) {
-            loginBtn.click();
+    var filtered = [];
+    for (var i = 0; i < streams.length; i++) {
+        var s = streams[i];
+        if (categoryId === 0 || s.category_id === categoryId) {
+            filtered.push(s);
         }
+    }
+
+    var container = document.getElementById('stream-list-container');
+    if (!container) return;
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="no-data">Bu kategoride yayın yok.</div>';
+        return;
+    }
+
+    var html = '<div class="stream-grid">';
+    for (var j = 0; j < filtered.length; j++) {
+        var item = filtered[j];
+        var name = item.name || 'İsimsiz';
+        var icon = item.stream_icon || '';
+        var id = item.stream_id || item.series_id || item.id;
+        var type = 'live';
+        if (tab === 'vod') type = 'movie';
+        if (tab === 'series') type = 'series';
+        if (tab === 'catchup') type = 'catchup';
+
+        html += '<div class="stream-card" data-id="' + id + '" data-type="' + type + '" data-name="' + escapeHtml(name) + '" data-icon="' + escapeHtml(icon) + '">';
+        html += '<div class="thumb">';
+        if (icon) html += '<img src="' + escapeHtml(icon) + '" alt="" onerror="this.style.display=\'none\'">';
+        else html += '<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;">No Image</div>';
+        html += '</div><div class="info"><div class="title">' + escapeHtml(name) + '</div>';
+        if (item.rating) html += '<div class="sub">⭐ ' + item.rating + '</div>';
+        html += '</div></div>';
+    }
+    html += '</div>';
+    container.innerHTML = html;
+
+    var cards = container.getElementsByClassName('stream-card');
+    for (var k = 0; k < cards.length; k++) {
+        cards[k].addEventListener('click', function(e) {
+            var card = e.currentTarget;
+            var id = card.getAttribute('data-id');
+            var type = card.getAttribute('data-type');
+            var name = card.getAttribute('data-name');
+            playStream(id, type, name);
+        });
+    }
+}
+
+function playStream(id, type, name) {
+    showScreen('player-screen');
+    playerTitle.textContent = name || 'Yayın';
+    playerEpg.textContent = 'EPG yükleniyor...';
+
+    var server = serverInput.value;
+    var port = portInput.value;
+    var username = usernameInput.value;
+    var password = passwordInput.value;
+
+    var url = '';
+    if (type === 'live' || type === 'catchup') {
+        url = 'http://' + server + ':' + port + '/live/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + id + '.ts';
+    } else if (type === 'movie') {
+        url = 'http://' + server + ':' + port + '/movie/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + id + '.ts';
+    } else {
+        alert('Dizi oynatma henüz desteklenmiyor.');
+        showScreen('main-screen');
+        return;
+    }
+
+    playerVideo.src = url;
+    playerVideo.load();
+    playerVideo.play();
+
+    if (type === 'live' || type === 'catchup') {
+        xtreamRequest('action=get_short_epg&stream_id=' + id, function(err, data) {
+            if (!err && data && data.epg_data) {
+                var epgText = '';
+                for (var i = 0; i < data.epg_data.length; i++) {
+                    var ep = data.epg_data[i];
+                    epgText += ep.title + ' (' + ep.start + '-' + ep.end + ') ';
+                }
+                playerEpg.textContent = epgText || 'EPG verisi yok';
+            } else {
+                playerEpg.textContent = 'EPG verisi yok';
+            }
+        });
+    } else {
+        playerEpg.textContent = 'VOD - ' + name;
+    }
+}
+
+// ---- Olaylar ----
+loginBtn.addEventListener('click', function() {
+    var server = serverInput.value.trim();
+    var port = portInput.value.trim();
+    var username = usernameInput.value.trim();
+    var password = passwordInput.value.trim();
+    if (!server || !port || !username || !password) {
+        loginStatus.textContent = 'Lütfen tüm alanları doldurun.';
+        loginStatus.style.color = '#ff6b6b';
+        return;
+    }
+    doLogin(server, port, username, password);
+});
+
+urlLoginBtn.addEventListener('click', function() {
+    var url = urlInput.value.trim();
+    if (!url) {
+        loginStatus.textContent = 'Lütfen geçerli bir URL girin.';
+        loginStatus.style.color = '#ff6b6b';
+        return;
+    }
+    var username = getParameterByName(url, 'username');
+    var password = getParameterByName(url, 'password');
+    var match = url.match(/^https?:\/\/([^\/:]+)(?::(\d+))?/);
+    if (match && username && password) {
+        var server = match[1];
+        var port = match[2] || '80';
+        doLogin(server, port, username, password);
+    } else {
+        loginStatus.textContent = 'URL'den kullanıcı adı/şifre alınamadı. Manuel girin.';
+        loginStatus.style.color = '#ff6b6b';
+    }
+});
+
+for (var i = 0; i < tabs.length; i++) {
+    tabs[i].addEventListener('click', function() {
+        loadTab(this.getAttribute('data-tab'));
     });
+}
 
-    // ---- Uygulama başlangıcı ----
-    // Varsayılan giriş ekranı active
-    // Demo bilgiler doldurulmuş
+settingsOpen.addEventListener('click', function() { showScreen('settings-screen'); });
+settingsClose.addEventListener('click', function() { showScreen('main-screen'); });
+playerClose.addEventListener('click', function() {
+    playerVideo.pause();
+    playerVideo.src = '';
+    showScreen('main-screen');
+});
+recentBtn.addEventListener('click', function() { alert('Son çalınanlar listesi henüz uygulanmadı.'); });
+favoritesBtn.addEventListener('click', function() { alert('Sık kullanılanlar yöneticisi henüz uygulanmadı.'); });
 
-    // Eğer demo bilgiler geçerli ise otomatik giriş deneyebiliriz, ama kullanıcı isterse tıklasın.
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && loginScreen.classList.contains('active')) {
+        loginBtn.click();
+    }
+});
 
-    console.log('DuplexPlay başlatıldı (ES5 uyumlu)');
+console.log('DuplexPlay başlatıldı (ES5)');
 </script>
 </body>
 </html>
