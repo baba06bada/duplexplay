@@ -79,17 +79,17 @@
     <div class="login-box">
         <h1>DuplexPlay</h1>
         <label>Sunucu</label>
-        <input type="text" id="server-input" value="mag.plusgerman.eu" placeholder="örn: mag.plusgerman.eu">
+        <input type="text" id="server-input" value="tekno072.xyz" placeholder="örn: mag.plusgerman.eu">
         <label>Port</label>
         <input type="text" id="port-input" value="8080" placeholder="örn: 8080">
         <label>Kullanıcı Adı</label>
-        <input type="text" id="username-input" value="demo" placeholder="kullanıcı adı">
+        <input type="text" id="username-input" value="bny5748" placeholder="kullanıcı adı">
         <label>Şifre</label>
-        <input type="password" id="password-input" value="demo" placeholder="şifre">
+        <input type="password" id="password-input" value="bny1401yy00" placeholder="şifre">
         <button class="btn" id="login-btn">Giriş Yap</button>
         <div class="url-or">— veya —</div>
-        <label>Xtream URL</label>
-        <input type="text" id="url-input" placeholder="http://sunucu:port/get.php?username=...&password=...">
+        <label>Xtream / M3U URL</label>
+        <input type="text" id="url-input" value="http://tekno072.xyz:8080/get.php?username=bny5748&password=bny1401yy00&type=m3u_plus_plus" placeholder="http://.../get.php?...">
         <button class="btn btn-secondary" id="url-login-btn">URL ile Giriş</button>
         <div id="login-status"></div>
     </div>
@@ -142,9 +142,11 @@
 <script>
 /* ================================================================
    SAFE ES5 - Chromium 34 / webOS 2.2.3 uyumlu
+   M3U (get.php) ve Xtream API (player_api.php) desteği
    ================================================================ */
 
 var baseUrl = '';
+var isM3U = false;               // M3U modunda mı?
 var liveStreams = [];
 var vodStreams = [];
 var seriesStreams = [];
@@ -154,6 +156,7 @@ var seriesCategories = [];
 var currentTab = 'live';
 var currentCategoryId = 0;
 var currentCategoryName = 'Tümü';
+var m3uStreams = [];             // M3U'dan gelen tüm kanallar (url dahil)
 
 var loginScreen = document.getElementById('login-screen');
 var mainScreen = document.getElementById('main-screen');
@@ -217,7 +220,7 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 
-// ---- Xtream isteği (tam hata yönetimi) ----
+// ---- Xtream API isteği (zaman aşımı + hata) ----
 function xtreamRequest(endpoint, callback) {
     var fullUrl = baseUrl + '&' + endpoint;
     var xhr = new XMLHttpRequest();
@@ -257,131 +260,152 @@ function xtreamRequest(endpoint, callback) {
     xhr.send();
 }
 
-// ---- Tüm verileri çek (zaman aşımı korumalı) ----
-function fetchAllData(callback) {
-    var completed = 0;
-    var total = 3;
-    var hasError = false;
+// ---- M3U dosyasını indir ve parse et ----
+function loadM3U(url, callback) {
+    var xhr = new XMLHttpRequest();
+    var isDone = false;
+    var timeoutId = setTimeout(function() {
+        if (!isDone) {
+            isDone = true;
+            callback('Zaman aşımı (15 sn) - M3U indirilemedi', null);
+        }
+    }, 15000);
 
-    function checkDone() {
-        completed++;
-        console.log('checkDone -> completed=' + completed + ' total=' + total);
-        if (completed >= total) {
-            callback();
+    xhr.open('GET', url, true);
+    xhr.onreadystatechange = function() {
+        if (isDone) return;
+        if (xhr.readyState === 4) {
+            clearTimeout(timeoutId);
+            isDone = true;
+            if (xhr.status === 200) {
+                callback(null, xhr.responseText);
+            } else {
+                callback('HTTP ' + xhr.status + ' M3U indirilemedi', null);
+            }
+        }
+    };
+    xhr.onerror = function() {
+        if (!isDone) {
+            clearTimeout(timeoutId);
+            isDone = true;
+            callback('Ağ hatası - M3U indirilemedi', null);
+        }
+    };
+    xhr.send();
+}
+
+// ---- M3U parse et ----
+function parseM3U(data) {
+    var lines = data.split(/\r?\n/);
+    var streams = [];
+    var categoriesMap = {};
+    var categoryIdCounter = 0;
+    var currentExtinf = null;
+
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (line.indexOf('#EXTINF') === 0) {
+            // #EXTINF:0 group-title="..." logo="..." , Kanal Adı
+            var info = line;
+            var name = '';
+            var group = 'Diğer';
+            var logo = '';
+            // Adı virgülden sonra al
+            var commaIdx = info.lastIndexOf(',');
+            if (commaIdx !== -1) {
+                name = info.substring(commaIdx + 1).trim();
+            }
+            // group-title
+            var groupMatch = info.match(/group-title="([^"]*)"/);
+            if (groupMatch) group = groupMatch[1] || 'Diğer';
+            // logo (tvg-logo)
+            var logoMatch = info.match(/tvg-logo="([^"]*)"/);
+            if (logoMatch) logo = logoMatch[1] || '';
+            // stream_id yok, kendimiz bir id verelim (index)
+            var streamId = 'm3u_' + i;
+            currentExtinf = {
+                id: streamId,
+                name: name || 'İsimsiz',
+                group: group,
+                logo: logo,
+                url: ''
+            };
+        } else if (line && line.indexOf('#') !== 0 && currentExtinf) {
+            // Bu satır akış URL'si
+            currentExtinf.url = line;
+            // Kategori ID'sini al veya oluştur
+            var catId = categoriesMap[group];
+            if (catId === undefined) {
+                categoryIdCounter++;
+                catId = categoryIdCounter;
+                categoriesMap[group] = catId;
+                // liveCategories'e ekle
+                liveCategories.push({
+                    category_id: catId,
+                    category_name: group
+                });
+            }
+            // stream'i ekle
+            streams.push({
+                stream_id: currentExtinf.id,
+                name: currentExtinf.name,
+                category_id: catId,
+                stream_icon: currentExtinf.logo,
+                url: currentExtinf.url
+            });
+            currentExtinf = null;
         }
     }
 
-    // Zorunlu zaman aşımı (15 sn sonra callback)
-    var forceCallback = setTimeout(function() {
-        console.warn('fetchAllData zorunlu zaman aşımı tetiklendi');
-        callback();
-    }, 15000);
+    // Eğer hiç kategori yoksa varsayılan ekle
+    if (liveCategories.length === 0) {
+        liveCategories.push({ category_id: 1, category_name: 'Tümü' });
+    }
 
-    // Asıl istekleri yap, her biri checkDone çağırır
-    // Canlı
-    xtreamRequest('action=get_live_streams', function(err, data) {
-        if (!err && data && data.live_streams) {
-            liveStreams = data.live_streams;
-        } else {
-            liveStreams = [];
-            hasError = true;
-            console.warn('Canlı akış hatası:', err);
-        }
-        xtreamRequest('action=get_live_categories', function(err2, catData) {
-            if (!err2 && catData && catData.categories) {
-                liveCategories = catData.categories;
-            } else {
-                liveCategories = [];
-                console.warn('Canlı kategori hatası:', err2);
-            }
-            checkDone();
-        });
-    });
-
-    // VOD
-    xtreamRequest('action=get_vod_streams', function(err, data) {
-        if (!err && data && data.vod_streams) {
-            vodStreams = data.vod_streams;
-        } else {
-            vodStreams = [];
-            hasError = true;
-            console.warn('VOD hatası:', err);
-        }
-        xtreamRequest('action=get_vod_categories', function(err2, catData) {
-            if (!err2 && catData && catData.categories) {
-                vodCategories = catData.categories;
-            } else {
-                vodCategories = [];
-                console.warn('VOD kategori hatası:', err2);
-            }
-            checkDone();
-        });
-    });
-
-    // Diziler
-    xtreamRequest('action=get_series_streams', function(err, data) {
-        if (!err && data && data.series_streams) {
-            seriesStreams = data.series_streams;
-        } else {
-            seriesStreams = [];
-            hasError = true;
-            console.warn('Dizi hatası:', err);
-        }
-        xtreamRequest('action=get_series_categories', function(err2, catData) {
-            if (!err2 && catData && catData.categories) {
-                seriesCategories = catData.categories;
-            } else {
-                seriesCategories = [];
-                console.warn('Dizi kategori hatası:', err2);
-            }
-            checkDone();
-        });
-    });
-
-    // Zorunlu callback temizleyici (eğer checkDone 3 kez çağrılırsa temizle)
-    // checkDone içinde completed kontrolü yapılır, ama forceCallback yine de çalışabilir.
-    // Bunu önlemek için, callback'in sadece bir kez çağrılmasını sağlayalım.
-    var originalCallback = callback;
-    var callbackCalled = false;
-    var safeCallback = function() {
-        if (!callbackCalled) {
-            callbackCalled = true;
-            clearTimeout(forceCallback);
-            originalCallback();
-        }
-    };
-    // checkDone'ı safeCallback ile sarmala
-    var originalCheckDone = checkDone;
-    checkDone = function() {
-        completed++;
-        console.log('checkDone -> completed=' + completed + ' total=' + total);
-        if (completed >= total) {
-            safeCallback();
-        }
-    };
-    // Ama forceCallback de safeCallback çağırmalı
-    // clearTimeout zaten yapıldı, ama eğer checkDone hiç çağrılmazsa forceCallback çalışır.
-    // O zaman forceCallback içinde safeCallback çağrılmalı.
-    // Bunu yukarıda zaten yaptık: forceCallback = setTimeout(function(){ safeCallback(); }, 15000);
-    // Ancak yukarıda forceCallback tanımlandı, şimdi tekrar düzenleyelim:
-    // Daha önce tanımladığımız forceCallback'i yeniden atayalım.
-    // Aslında yukarıda forceCallback tanımlandı ve içinde callback() çağırıyordu. Onu safeCallback yapalım.
-    // Ama kod akışını karıştırmamak için en baştan düzenleyelim.
-    // Yeniden yazıyorum:
-    // (Bu yorum satırı, yukarıdaki forceCallback'i geçersiz kılmak için)
+    return streams;
 }
 
-// ---- Giriş ----
+// ---- M3U girişi ----
+function doLoginM3U(m3uUrl) {
+    loginStatus.textContent = 'M3U indiriliyor...';
+    loginStatus.style.color = '#ffb347';
+    loadM3U(m3uUrl, function(err, data) {
+        if (err) {
+            loginStatus.textContent = 'Hata: ' + err;
+            loginStatus.style.color = '#ff6b6b';
+            return;
+        }
+        try {
+            m3uStreams = parseM3U(data);
+            // liveStreams'i M3U stream'leriyle doldur
+            liveStreams = m3uStreams.slice(0); // kopyala
+            // vod ve series boş
+            vodStreams = [];
+            seriesStreams = [];
+            vodCategories = [];
+            seriesCategories = [];
+
+            loginStatus.textContent = 'M3U başarıyla yüklendi (' + liveStreams.length + ' kanal)';
+            loginStatus.style.color = '#6bff6b';
+            setTimeout(function() {
+                showScreen('main-screen');
+                loadTab('live');
+            }, 400);
+        } catch (e) {
+            loginStatus.textContent = 'M3U parse hatası: ' + e.message;
+            loginStatus.style.color = '#ff6b6b';
+        }
+    });
+}
+
+// ---- Xtream API giriş (mevcut) ----
 function doLogin(server, port, username, password) {
     baseUrl = 'http://' + server + ':' + port + '/player_api.php?username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password);
     loginStatus.textContent = 'Bağlanıyor...';
     loginStatus.style.color = '#ffb347';
     console.log('doLogin -> baseUrl=' + baseUrl);
 
-    // fetchAllData çağır
     fetchAllData(function() {
-        // Veriler geldi veya zaman aşımı oldu.
-        console.log('fetchAllData tamamlandı. liveStreams uzunluğu=' + liveStreams.length);
         if (liveStreams.length === 0 && vodStreams.length === 0 && seriesStreams.length === 0) {
             loginStatus.textContent = 'Sunucudan veri alınamadı. Lütfen bilgileri kontrol edin.';
             loginStatus.style.color = '#ff6b6b';
@@ -393,6 +417,91 @@ function doLogin(server, port, username, password) {
             showScreen('main-screen');
             loadTab('live');
         }, 400);
+    });
+}
+
+// ---- fetchAllData (mevcut) ----
+function fetchAllData(callback) {
+    var completed = 0;
+    var total = 3;
+    var hasError = false;
+
+    function checkDone() {
+        completed++;
+        if (completed >= total) {
+            callback();
+        }
+    }
+
+    // Zorunlu zaman aşımı
+    var forceCallback = setTimeout(function() {
+        console.warn('fetchAllData zorunlu zaman aşımı');
+        callback();
+    }, 15000);
+
+    var safeCallback = function() {
+        clearTimeout(forceCallback);
+        callback();
+    };
+
+    var originalCheckDone = checkDone;
+    checkDone = function() {
+        completed++;
+        if (completed >= total) {
+            safeCallback();
+        }
+    };
+
+    // Canlı
+    xtreamRequest('action=get_live_streams', function(err, data) {
+        if (!err && data && data.live_streams) {
+            liveStreams = data.live_streams;
+        } else {
+            liveStreams = [];
+            console.warn('Canlı akış hatası:', err);
+        }
+        xtreamRequest('action=get_live_categories', function(err2, catData) {
+            if (!err2 && catData && catData.categories) {
+                liveCategories = catData.categories;
+            } else {
+                liveCategories = [];
+            }
+            checkDone();
+        });
+    });
+
+    // VOD
+    xtreamRequest('action=get_vod_streams', function(err, data) {
+        if (!err && data && data.vod_streams) {
+            vodStreams = data.vod_streams;
+        } else {
+            vodStreams = [];
+        }
+        xtreamRequest('action=get_vod_categories', function(err2, catData) {
+            if (!err2 && catData && catData.categories) {
+                vodCategories = catData.categories;
+            } else {
+                vodCategories = [];
+            }
+            checkDone();
+        });
+    });
+
+    // Diziler
+    xtreamRequest('action=get_series_streams', function(err, data) {
+        if (!err && data && data.series_streams) {
+            seriesStreams = data.series_streams;
+        } else {
+            seriesStreams = [];
+        }
+        xtreamRequest('action=get_series_categories', function(err2, catData) {
+            if (!err2 && catData && catData.categories) {
+                seriesCategories = catData.categories;
+            } else {
+                seriesCategories = [];
+            }
+            checkDone();
+        });
     });
 }
 
@@ -418,12 +527,18 @@ function renderCategoryView(tab) {
     else if (tab === 'series') { catList = seriesCategories; title = 'Dizi Kategorileri'; }
     else if (tab === 'catchup') { catList = liveCategories; title = 'Yeniden oynatma (Catch-up)'; }
 
+    // Eğer kategori yoksa varsayılan ekle
+    if (catList.length === 0) {
+        catList = [{ category_id: 0, category_name: 'Tümü' }];
+    }
+
     var html = '<h2>' + title + '</h2>';
     html += '<div class="cat-grid">';
     html += '<div class="cat-item active" data-cat-id="0" data-cat-name="Tümü">Tümü</div>';
     for (var i = 0; i < catList.length; i++) {
         var cat = catList[i];
-        html += '<div class="cat-item" data-cat-id="' + cat.category_id + '" data-cat-name="' + escapeHtml(cat.category_name) + '">' + escapeHtml(cat.category_name) + '</div>';
+        var catId = cat.category_id || cat.id || i+1;
+        html += '<div class="cat-item" data-cat-id="' + catId + '" data-cat-name="' + escapeHtml(cat.category_name || 'Kategori') + '">' + escapeHtml(cat.category_name || 'Kategori') + '</div>';
     }
     html += '</div><div id="stream-list-container"></div>';
     contentArea.innerHTML = html;
@@ -452,10 +567,12 @@ function renderStreams(tab, categoryId) {
     else if (tab === 'series') streams = seriesStreams;
     else if (tab === 'catchup') streams = liveStreams;
 
+    // M3U modunda category_id kontrolü (stream'lerde category_id var)
     var filtered = [];
     for (var i = 0; i < streams.length; i++) {
         var s = streams[i];
-        if (categoryId === 0 || s.category_id === categoryId) {
+        var catId = s.category_id || 0;
+        if (categoryId === 0 || catId === categoryId) {
             filtered.push(s);
         }
     }
@@ -472,13 +589,13 @@ function renderStreams(tab, categoryId) {
         var item = filtered[j];
         var name = item.name || 'İsimsiz';
         var icon = item.stream_icon || '';
-        var id = item.stream_id || item.series_id || item.id;
+        var id = item.stream_id || item.id || 'id_' + j;
         var type = 'live';
         if (tab === 'vod') type = 'movie';
         if (tab === 'series') type = 'series';
         if (tab === 'catchup') type = 'catchup';
 
-        html += '<div class="stream-card" data-id="' + id + '" data-type="' + type + '" data-name="' + escapeHtml(name) + '" data-icon="' + escapeHtml(icon) + '">';
+        html += '<div class="stream-card" data-id="' + id + '" data-type="' + type + '" data-name="' + escapeHtml(name) + '" data-icon="' + escapeHtml(icon) + '" data-url="' + escapeHtml(item.url || '') + '">';
         html += '<div class="thumb">';
         if (icon) html += '<img src="' + escapeHtml(icon) + '" alt="" onerror="this.style.display=\'none\'">';
         else html += '<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;">No Image</div>';
@@ -496,49 +613,61 @@ function renderStreams(tab, categoryId) {
             var id = card.getAttribute('data-id');
             var type = card.getAttribute('data-type');
             var name = card.getAttribute('data-name');
-            playStream(id, type, name);
+            var url = card.getAttribute('data-url');
+            playStream(id, type, name, url);
         });
     }
 }
 
-function playStream(id, type, name) {
+// ---- Oynatma (url parametresi eklendi) ----
+function playStream(id, type, name, url) {
     showScreen('player-screen');
     playerTitle.textContent = name || 'Yayın';
     playerEpg.textContent = 'EPG yükleniyor...';
 
-    var server = serverInput.value;
-    var port = portInput.value;
-    var username = usernameInput.value;
-    var password = passwordInput.value;
-
-    var url = '';
-    if (type === 'live' || type === 'catchup') {
-        url = 'http://' + server + ':' + port + '/live/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + id + '.ts';
-    } else if (type === 'movie') {
-        url = 'http://' + server + ':' + port + '/movie/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + id + '.ts';
+    var finalUrl = '';
+    if (url && url.length > 0) {
+        // M3U modunda doğrudan URL kullan
+        finalUrl = url;
     } else {
-        alert('Dizi oynatma henüz desteklenmiyor.');
-        showScreen('main-screen');
-        return;
+        // Xtream API modu: URL'yi oluştur
+        var server = serverInput.value;
+        var port = portInput.value;
+        var username = usernameInput.value;
+        var password = passwordInput.value;
+        if (type === 'live' || type === 'catchup') {
+            finalUrl = 'http://' + server + ':' + port + '/live/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + id + '.ts';
+        } else if (type === 'movie') {
+            finalUrl = 'http://' + server + ':' + port + '/movie/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + id + '.ts';
+        } else {
+            alert('Bu içerik türü henüz desteklenmiyor.');
+            showScreen('main-screen');
+            return;
+        }
     }
 
-    playerVideo.src = url;
+    playerVideo.src = finalUrl;
     playerVideo.load();
     playerVideo.play();
 
     if (type === 'live' || type === 'catchup') {
-        xtreamRequest('action=get_short_epg&stream_id=' + id, function(err, data) {
-            if (!err && data && data.epg_data) {
-                var epgText = '';
-                for (var i = 0; i < data.epg_data.length; i++) {
-                    var ep = data.epg_data[i];
-                    epgText += ep.title + ' (' + ep.start + '-' + ep.end + ') ';
+        // EPG dene (sadece Xtream API için)
+        if (!isM3U && baseUrl) {
+            xtreamRequest('action=get_short_epg&stream_id=' + id, function(err, data) {
+                if (!err && data && data.epg_data) {
+                    var epgText = '';
+                    for (var i = 0; i < data.epg_data.length; i++) {
+                        var ep = data.epg_data[i];
+                        epgText += ep.title + ' (' + ep.start + '-' + ep.end + ') ';
+                    }
+                    playerEpg.textContent = epgText || 'EPG verisi yok';
+                } else {
+                    playerEpg.textContent = 'EPG verisi yok';
                 }
-                playerEpg.textContent = epgText || 'EPG verisi yok';
-            } else {
-                playerEpg.textContent = 'EPG verisi yok';
-            }
-        });
+            });
+        } else {
+            playerEpg.textContent = 'EPG verisi yok (M3U)';
+        }
     } else {
         playerEpg.textContent = 'VOD - ' + name;
     }
@@ -555,6 +684,7 @@ loginBtn.addEventListener('click', function() {
         loginStatus.style.color = '#ff6b6b';
         return;
     }
+    isM3U = false;
     doLogin(server, port, username, password);
 });
 
@@ -565,16 +695,41 @@ urlLoginBtn.addEventListener('click', function() {
         loginStatus.style.color = '#ff6b6b';
         return;
     }
-    var username = getParameterByName(url, 'username');
-    var password = getParameterByName(url, 'password');
-    var match = url.match(/^https?:\/\/([^\/:]+)(?::(\d+))?/);
-    if (match && username && password) {
-        var server = match[1];
-        var port = match[2] || '80';
-        doLogin(server, port, username, password);
+
+    // M3U mu kontrol et
+    if (url.indexOf('get.php') !== -1 || url.indexOf('m3u') !== -1) {
+        // M3U modu
+        isM3U = true;
+        // Sunucu, port, username, password'yi inputlara yaz (opsiyonel)
+        var match = url.match(/^https?:\/\/([^\/:]+)(?::(\d+))?/);
+        if (match) {
+            serverInput.value = match[1];
+            portInput.value = match[2] || '80';
+        }
+        var u = getParameterByName(url, 'username');
+        var p = getParameterByName(url, 'password');
+        if (u) usernameInput.value = u;
+        if (p) passwordInput.value = p;
+        // M3U yükle
+        doLoginM3U(url);
     } else {
-        loginStatus.textContent = 'URL'den kullanıcı adı/şifre alınamadı. Manuel girin.';
-        loginStatus.style.color = '#ff6b6b';
+        // Xtream API dene
+        isM3U = false;
+        var username = getParameterByName(url, 'username');
+        var password = getParameterByName(url, 'password');
+        var match = url.match(/^https?:\/\/([^\/:]+)(?::(\d+))?/);
+        if (match && username && password) {
+            var server = match[1];
+            var port = match[2] || '80';
+            serverInput.value = server;
+            portInput.value = port;
+            usernameInput.value = username;
+            passwordInput.value = password;
+            doLogin(server, port, username, password);
+        } else {
+            loginStatus.textContent = 'URL'den bilgiler alınamadı. Lütfen manuel girin.';
+            loginStatus.style.color = '#ff6b6b';
+        }
     }
 });
 
@@ -600,7 +755,7 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-console.log('DuplexPlay başlatıldı (ES5) - Gelişmiş hata yönetimi aktif');
+console.log('DuplexPlay başlatıldı (ES5) - M3U/API destekli');
 </script>
 </body>
 </html>
