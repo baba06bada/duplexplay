@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>DuplexPlay Clone - ES5 Xtream Player</title>
+    <style>
+        /* CSS3 özellikleri Chromium 34 tarafından desteklenir ancak çok gelişmiş flex özelliklerinden kaçınılmıştır */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            overflow: hidden; /* TV için kaydırma çubuğunu gizle */
+        }
+        
+        .screen {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .active-screen {
+            display: block;
+        }
+
+        /* Başlık ve Menü */
+        .header {
+            padding: 20px;
+            background-color: #1a1a1a;
+            font-size: 24px;
+            font-weight: bold;
+            border-bottom: 2px solid #333;
+        }
+
+        /* Grid Yapısı (DuplexPlay Tarzı) */
+        .grid-container {
+            padding: 20px;
+            /* Eski tarayıcılar için float veya inline-block kullanımı daha güvenlidir */
+        }
+
+        .grid-item {
+            display: inline-block;
+            width: 200px;
+            height: 120px;
+            background-color: #2a2a2a;
+            margin: 10px;
+            text-align: center;
+            vertical-align: top;
+            border: 3px solid transparent;
+            border-radius: 8px;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .grid-item span {
+            display: block;
+            margin-top: 45px;
+            font-size: 18px;
+        }
+
+        /* Kumanda Focus Durumu (En Kritik Kısım) */
+        .focused {
+            border: 3px solid #ffcc00; /* DuplexPlay sarı/mavi vurgusu */
+            background-color: #3a3a3a;
+            transform: scale(1.05); /* Chromium 34 destekler */
+            -webkit-transform: scale(1.05);
+            transition: all 0.2s;
+            -webkit-transition: all 0.2s;
+        }
+
+        /* Giriş Ekranı Formu */
+        .login-box {
+            width: 400px;
+            margin: 100px auto;
+            background-color: #1a1a1a;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .login-box input {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #333;
+            border: 1px solid #555;
+            color: white;
+            font-size: 16px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            border: 3px solid transparent;
+            color: white;
+            margin-top: 15px;
+            border-radius: 5px;
+        }
+
+        /* Video Oynatıcı Alanı */
+        #player-container {
+            width: 100%;
+            height: 100%;
+            background-color: black;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="screen-login" class="screen active-screen">
+        <div class="header">Xtream API Girişi</div>
+        <div class="login-box">
+            <input type="text" id="xtream-url" placeholder="http://url:port" class="nav-item">
+            <input type="text" id="xtream-user" placeholder="Kullanıcı Adı" class="nav-item">
+            <input type="text" id="xtream-pass" placeholder="Şifre" class="nav-item">
+            <div id="btn-login" class="btn nav-item" onclick="loginXtream()">GİRİŞ YAP</div>
+            <div id="login-status" style="margin-top: 15px; color: yellow;"></div>
+        </div>
+    </div>
+
+    <div id="screen-main" class="screen">
+        <div class="header">DuplexPlay Ana Menü</div>
+        <div class="grid-container" id="main-menu-grid">
+            </div>
+    </div>
+
+    <div id="screen-categories" class="screen">
+        <div class="header" id="category-title">Kategoriler</div>
+        <div class="grid-container" id="category-grid">
+            </div>
+    </div>
+
+    <div id="screen-player" class="screen">
+        <div id="player-container">
+            <h2 style="margin-top: 20%;">Oynatılıyor... (Video Player Buraya Gelecek)</h2>
+            <p>Çıkmak için kumandadan GERİ (Back/Return) tuşuna basın.</p>
+        </div>
+    </div>
+
+    <script>
+        // --- DEĞİŞKENLER (Sadece var kullanılmaktadır) ---
+        var currentScreenId = 'screen-login';
+        var navItems = [];
+        var focusIndex = 0;
+        var xtreamData = { url: '', user: '', pass: '' };
+        
+        // TV Kumanda Tuş Kodları (LG webOS dahil genel standartlar)
+        var KEYS = {
+            LEFT: 37,
+            UP: 38,
+            RIGHT: 39,
+            DOWN: 40,
+            ENTER: 13,
+            BACK_LG: 461, // LG webOS Back tuşu
+            BACK_ESC: 27, // Bilgisayar testi için ESC
+            BACK_BS: 8    // Bazı eski TV'lerde Backspace
+        };
+
+        // --- BAŞLATMA ---
+        window.onload = function() {
+            document.addEventListener('keydown', handleKeyDown);
+            updateNavItems('screen-login');
+        };
+
+        // --- EKRAN YÖNETİMİ VE ODAK (FOCUS) SİSTEMİ ---
+        function showScreen(screenId) {
+            // Mevcut ekranı gizle
+            document.getElementById(currentScreenId).className = 'screen';
+            // Yeni ekranı göster
+            document.getElementById(screenId).className = 'screen active-screen';
+            currentScreenId = screenId;
+            focusIndex = 0;
+            updateNavItems(screenId);
+        }
+
+        function updateNavItems(screenId) {
+            var screenElement = document.getElementById(screenId);
+            // Sadece aktif ekrandaki 'nav-item' sınıfına sahip öğeleri bul
+            var elements = screenElement.getElementsByClassName('nav-item');
+            navItems = [];
+            for (var i = 0; i < elements.length; i++) {
+                navItems.push(elements[i]);
+            }
+            applyFocus();
+        }
+
+        function applyFocus() {
+            if (navItems.length === 0) return;
+            
+            // Tüm odakları temizle
+            for (var i = 0; i < navItems.length; i++) {
+                navItems[i].className = navItems[i].className.replace(' focused', '');
+            }
+            
+            // Sınırları kontrol et
+            if (focusIndex < 0) focusIndex = 0;
+            if (focusIndex >= navItems.length) focusIndex = navItems.length - 1;
+            
+            // Yeni odağı ekle
+            navItems[focusIndex].className += ' focused';
+            navItems[focusIndex].focus(); // Input alanları için tarayıcı odağı
+        }
+
+        function handleKeyDown(e) {
+            var keyCode = e.keyCode || e.which;
+
+            if (keyCode === KEYS.RIGHT) {
+                focusIndex++;
+                applyFocus();
+                e.preventDefault();
+            } 
+            else if (keyCode === KEYS.LEFT) {
+                focusIndex--;
+                applyFocus();
+                e.preventDefault();
+            }
+            else if (keyCode === KEYS.DOWN) {
+                // Basit bir alt satıra geçme algoritması (Grid yapısına göre geliştirilebilir)
+                focusIndex += 4; // Ortalama 4 kolon varsayımı
+                applyFocus();
+                e.preventDefault();
+            }
+            else if (keyCode === KEYS.UP) {
+                focusIndex -= 4;
+                applyFocus();
+                e.preventDefault();
+            }
+            else if (keyCode === KEYS.ENTER) {
+                if (navItems[focusIndex]) {
+                    navItems[focusIndex].click();
+                }
+                e.preventDefault();
+            }
+            else if (keyCode === KEYS.BACK_LG || keyCode === KEYS.BACK_ESC || keyCode === KEYS.BACK_BS) {
+                handleBackAction();
+                e.preventDefault();
+            }
+        }
+
+        function handleBackAction() {
+            if (currentScreenId === 'screen-player') {
+                showScreen('screen-categories');
+            } else if (currentScreenId === 'screen-categories') {
+                showScreen('screen-main');
+            } else if (currentScreenId === 'screen-main') {
+                showScreen('screen-login');
+            }
+        }
+
+        // --- XTREAM API VE AJAX (XMLHttpRequest) ---
+        function loginXtream() {
+            var url = document.getElementById('xtream-url').value;
+            var user = document.getElementById('xtream-user').value;
+            var pass = document.getElementById('xtream-pass').value;
+            var statusDiv = document.getElementById('login-status');
+
+            if (url === '' || user === '' || pass === '') {
+                statusDiv.innerHTML = 'Lütfen tüm alanları doldurun.';
+                return;
+            }
+
+            statusDiv.innerHTML = 'Bağlanıyor...';
+            xtreamData.url = url;
+            xtreamData.user = user;
+            xtreamData.pass = pass;
+
+            var apiUrl = url + '/player_api.php?username=' + user + '&password=' + pass;
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', apiUrl, true);
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            var response = JSON.parse(xhr.responseText);
+                            if (response.user_info && response.user_info.auth === 1) {
+                                buildMainMenu();
+                                showScreen('screen-main');
+                            } else {
+                                statusDiv.innerHTML = 'Giriş Başarısız: Bilgileri kontrol edin.';
+                            }
+                        } catch (e) {
+                            statusDiv.innerHTML = 'JSON ayrıştırma hatası. URL hatalı olabilir.';
+                        }
+                    } else {
+                        statusDiv.innerHTML = 'Bağlantı hatası: Sunucuya ulaşılamadı (HTTP ' + xhr.status + ').';
+                    }
+                }
+            };
+            
+            xhr.onerror = function() {
+                statusDiv.innerHTML = 'Ağ hatası. CORS veya URL sorunu olabilir.';
+            };
+
+            xhr.send();
+        }
+
+        // --- MENÜ OLUŞTURUCULAR ---
+        function buildMainMenu() {
+            var grid = document.getElementById('main-menu-grid');
+            grid.innerHTML = ''; // Temizle
+
+            var menus = [
+                { title: 'Canlı TV', action: 'loadCategories("live")' },
+                { title: 'Filmler (VOD)', action: 'loadCategories("vod")' },
+                { title: 'Diziler', action: 'loadCategories("series")' },
+                { title: 'Favoriler', action: 'alert("Favoriler yapım aşamasında")' }
+            ];
+
+            for (var i = 0; i < menus.length; i++) {
+                var itemDiv = document.createElement('div');
+                itemDiv.className = 'grid-item nav-item';
+                itemDiv.setAttribute('onclick', menus[i].action);
+                itemDiv.innerHTML = '<span>' + menus[i].title + '</span>';
+                grid.appendChild(itemDiv);
+            }
+        }
+
+        function loadCategories(type) {
+            var actionType = '';
+            if (type === 'live') actionType = 'get_live_categories';
+            if (type === 'vod') actionType = 'get_vod_categories';
+            if (type === 'series') actionType = 'get_series_categories';
+
+            var apiUrl = xtreamData.url + '/player_api.php?username=' + xtreamData.user + '&password=' + xtreamData.pass + '&action=' + actionType;
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', apiUrl, true);
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    var categories = JSON.parse(xhr.responseText);
+                    var grid = document.getElementById('category-grid');
+                    grid.innerHTML = ''; 
+
+                    document.getElementById('category-title').innerHTML = type.toUpperCase() + ' Kategorileri';
+
+                    for (var i = 0; i < categories.length; i++) {
+                        // Sadece ilk 50 kategoriyi alalım (Eski TV'lerde DOM şişmesin diye)
+                        if (i > 50) break; 
+                        
+                        var itemDiv = document.createElement('div');
+                        itemDiv.className = 'grid-item nav-item';
+                        itemDiv.setAttribute('onclick', 'playStream()'); // Geçici olarak direkt oynatıcıyı açar
+                        itemDiv.innerHTML = '<span>' + categories[i].category_name + '</span>';
+                        grid.appendChild(itemDiv);
+                    }
+                    showScreen('screen-categories');
+                }
+            };
+            xhr.send();
+        }
+
+        function playStream() {
+            showScreen('screen-player');
+        }
+    </script>
+</body>
+</html>
