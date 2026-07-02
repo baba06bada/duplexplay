@@ -2,299 +2,418 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>DuplexPlay Exact UI - webOS 2.2.3</title>
+    <title>DuplexPlay Interface</title>
     <style>
-        /* DUPLEXPLAY RENK PALETİ VE MİMARİSİ */
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #0b0f19; /* Duplex koyu lacivert arka plan */
-            color: #d1d5db;
-            font-family: Arial, sans-serif;
-            overflow: hidden;
-            width: 100vw;
-            height: 100vh;
-        }
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: sans-serif; background: #0b0f19; }
+        
+        /* Arka plan gradiyenti */
+        .bg-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: radial-gradient(circle, #2a4d87 0%, #0b0f19 80%); }
 
-        .screen {
-            display: none;
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
+        /* Header */
+        .header { height: 60px; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,0.1); color: #fff; z-index: 10; position: relative; }
+        .logo { width: 40px; height: 40px; background: #4a90e2; margin-right: 15px; }
 
-        .active-screen {
-            display: block;
-        }
+        /* Ana Grid Yapısı */
+        .grid-view { display: flex; flex-wrap: wrap; padding: 20px; gap: 15px; z-index: 5; position: relative; }
+        .card { width: 320px; height: 90px; background: rgba(255,255,255,0.15); border-radius: 4px; display: flex; align-items: center; padding: 10px; cursor: pointer; border: 2px solid transparent; }
+        .card.focused { background: rgba(255,255,255,0.3); border-color: #fff; box-shadow: 0 0 15px rgba(255,255,255,0.5); }
+        .icon { width: 50px; height: 50px; background: #333; margin-right: 15px; }
 
-        /* --- ÜST BİLGİ ÇUBUĞU (HEADER) --- */
-        .header-bar {
-            height: 60px;
-            background-color: #111827;
-            border-bottom: 2px solid #1f2937;
-            padding: 0 30px;
-            line-height: 60px;
-        }
+        /* Sağ Bilgi Paneli */
+        .side-panel { position: absolute; right: 20px; top: 80px; width: 300px; }
+        .side-box { background: rgba(0,0,0,0.4); padding: 15px; margin-bottom: 10px; }
 
-        .header-logo {
-            font-size: 24px;
-            font-weight: bold;
-            color: #ffffff;
-            float: left;
-        }
-
-        .header-time {
-            float: right;
-            font-size: 18px;
-            color: #9ca3af;
-        }
-
-        /* --- BÖLÜNMÜŞ EKRAN (SPLIT UI) DÜZENİ --- */
-        .container {
-            width: 100%;
-            height: calc(100vh - 62px); /* Header yüksekliğini çıkar */
-            position: relative;
-        }
-
-        /* SOL KENAR ÇUBUĞU (Kategoriler / Gruplar) */
-        .sidebar {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 30%;
-            height: 100%;
-            background-color: #111827;
-            border-right: 2px solid #1f2937;
-            box-sizing: border-box;
-            overflow: hidden; /* TV'de scroll gizlenir */
-        }
-
-        /* SAĞ İÇERİK ALANI (Kanallar / Grid) */
-        .content-area {
-            position: absolute;
-            left: 30%;
-            top: 0;
-            width: 70%;
-            height: 100%;
-            padding: 20px;
-            box-sizing: border-box;
-            background-color: #0b0f19;
-        }
-
-        /* --- LİSTE VE GRID ÖĞELERİ --- */
-        .list-item {
-            padding: 20px;
-            font-size: 20px;
-            border-bottom: 1px solid #1f2937;
-            color: #ffffff;
-            box-sizing: border-box;
-            border-left: 5px solid transparent;
-        }
-
-        .grid-container {
-            /* Eski tarayıcılar için float mantığı */
-            width: 100%;
-        }
-
-        .grid-item {
-            display: inline-block;
-            width: 180px;
-            height: 120px;
-            background-color: #1f2937;
-            margin: 10px;
-            border-radius: 8px;
-            border: 3px solid transparent;
-            text-align: center;
-            vertical-align: top;
-            box-sizing: border-box;
-            position: relative;
-        }
-
-        .grid-item span {
-            position: absolute;
-            bottom: 15px;
-            left: 0;
-            width: 100%;
-            font-size: 16px;
-            color: #ffffff;
-        }
-
-        /* --- DUPLEXPLAY FOCUS (ODAK) TASARIMI --- */
-        .focused {
-            /* DuplexPlay'in karakteristik parlak mavi çerçevesi ve arka plan aydınlanması */
-            border-color: #00e5ff !important; 
-            background-color: #374151 !important;
-            color: #ffffff;
-        }
-
-        .sidebar .focused {
-            border-left: 5px solid #00e5ff !important; /* Sidebar için sol çizgi vurgusu */
-            border-top: transparent !important;
-            border-right: transparent !important;
-            border-bottom: 1px solid #1f2937 !important;
-        }
-
+        /* Alt Butonlar */
+        .footer-bar { position: fixed; bottom: 0; width: 100%; height: 50px; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; gap: 20px; }
     </style>
 </head>
 <body>
+    <div class="bg-overlay"></div>
+    
+    <div class="header">
+        <div class="logo"></div>
+        <div id="title">Çalma Listeleri</div>
+    </div>
 
-    <div id="screen-main" class="screen active-screen">
-        
-        <div class="header-bar">
-            <div class="header-logo">DuplexPlay Clone</div>
-            <div class="header-time" id="clock">12:00</div>
+    <div class="grid-view" id="main-grid">
         </div>
 
-        <div class="container">
-            <div class="sidebar" id="group-list">
-                <div class="list-item nav-item focused" data-type="group" onclick="loadChannels('live')">Canlı TV</div>
-                <div class="list-item nav-item" data-type="group" onclick="loadChannels('vod')">Filmler (VOD)</div>
-                <div class="list-item nav-item" data-type="group" onclick="loadChannels('series')">Diziler</div>
-                <div class="list-item nav-item" data-type="group" onclick="alert('Ayarlar')">Ayarlar</div>
-            </div>
+    <div class="side-panel">
+        <div class="side-box">Son oynatılan</div>
+    </div>
 
-            <div class="content-area">
-                <h2 id="content-title" style="margin-top:0; color:#9ca3af;">Canlı TV</h2>
-                <div class="grid-container" id="channel-grid">
-                    </div>
-            </div>
-        </div>
+    <div class="footer-bar">
+        <div class="nav-item">Oynatma Listesi Ekle</div>
+        <div class="nav-item">Kayıtlar</div>
+        <div class="nav-item">Ayarlar</div>
     </div>
 
     <script>
-        // ES5 Kısıtlamalarına Uygun Değişkenler
-        var currentFocusIndex = 0;
         var navItems = [];
-        
-        // Sahte API verisi (Sen bunu XMLHttpRequest ile değiştireceksin)
-        var dummyData = {
-            live: ['TRT 1', 'ATV', 'Kanal D', 'Show TV', 'Star TV', 'TV8', 'NTV', 'Habertürk'],
-            vod: ['Matrix', 'Yüzüklerin Efendisi', 'Inception', 'Interstellar', 'Gladyatör'],
-            series: ['Breaking Bad', 'Game of Thrones', 'Ezel', 'Kurtlar Vadisi']
-        };
+        var focusIndex = 0;
 
-        // Tuş Kodları (webOS)
-        var KEYS = { LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, ENTER: 13 };
-
-        window.onload = function() {
-            document.addEventListener('keydown', handleKeyDown);
-            loadChannels('live'); // Varsayılan olarak Canlı TV'yi yükle
+        function init() {
+            // Örnek kartlar oluştur
+            var grid = document.getElementById('main-grid');
+            for(var i=0; i<8; i++) {
+                var div = document.createElement('div');
+                div.className = 'card nav-item';
+                div.innerHTML = '<div class="icon"></div><span>http://stream_url_' + i + '</span>';
+                grid.appendChild(div);
+            }
             updateNavItems();
-            updateClock();
-            setInterval(updateClock, 60000);
-        };
-
-        function updateClock() {
-            var date = new Date();
-            var hours = date.getHours();
-            var minutes = date.getMinutes();
-            if (hours < 10) hours = '0' + hours;
-            if (minutes < 10) minutes = '0' + minutes;
-            document.getElementById('clock').innerHTML = hours + ':' + minutes;
         }
 
-        // --- İÇERİK YÜKLEME ---
-        function loadChannels(category) {
-            var grid = document.getElementById('channel-grid');
-            var title = document.getElementById('content-title');
-            grid.innerHTML = ''; // Temizle
-            
-            if (category === 'live') title.innerHTML = 'Canlı TV Kategorileri';
-            if (category === 'vod') title.innerHTML = 'Filmler (VOD)';
-            if (category === 'series') title.innerHTML = 'Diziler';
-
-            var items = dummyData[category] || [];
-
-            for (var i = 0; i < items.length; i++) {
-                var itemDiv = document.createElement('div');
-                itemDiv.className = 'grid-item nav-item';
-                itemDiv.setAttribute('data-type', 'channel');
-                itemDiv.innerHTML = '<span>' + items[i] + '</span>';
-                grid.appendChild(itemDiv);
-            }
-
-            // Yeni kanallar yüklendiğinde navItems'i güncelle ama odağı sol menüde tut
-            updateNavItems(true); 
-        }
-
-        // --- SPATIAL NAVIGATION (TV KUMANDA ODAĞI) ---
-        function updateNavItems(keepFocusIndex) {
-            var elements = document.getElementsByClassName('nav-item');
-            navItems = [];
-            for (var i = 0; i < elements.length; i++) {
-                navItems.push(elements[i]);
-            }
-            if (!keepFocusIndex) currentFocusIndex = 0;
+        function updateNavItems() {
+            navItems = document.getElementsByClassName('nav-item');
             applyFocus();
         }
 
         function applyFocus() {
-            if (navItems.length === 0) return;
-            
-            for (var i = 0; i < navItems.length; i++) {
+            for(var i=0; i<navItems.length; i++) {
                 navItems[i].className = navItems[i].className.replace(' focused', '');
             }
-            
-            if (currentFocusIndex < 0) currentFocusIndex = 0;
-            if (currentFocusIndex >= navItems.length) currentFocusIndex = navItems.length - 1;
-            
-            navItems[currentFocusIndex].className += ' focused';
-        }
-
-        function handleKeyDown(e) {
-            var keyCode = e.keyCode || e.which;
-            var currentElement = navItems[currentFocusIndex];
-            var isSidebar = currentElement.getAttribute('data-type') === 'group';
-
-            if (keyCode === KEYS.DOWN) {
-                if (isSidebar) {
-                    // Sidebar'da aşağı in
-                    if (currentFocusIndex < 3) currentFocusIndex++;
-                } else {
-                    // Grid'de aşağı in (ortalama 3 kolon)
-                    currentFocusIndex += 3;
-                }
-                applyFocus();
-                e.preventDefault();
-            } 
-            else if (keyCode === KEYS.UP) {
-                if (isSidebar) {
-                    if (currentFocusIndex > 0) currentFocusIndex--;
-                } else {
-                    currentFocusIndex -= 3;
-                }
-                applyFocus();
-                e.preventDefault();
-            }
-            else if (keyCode === KEYS.RIGHT) {
-                if (isSidebar) {
-                    // Sağ menüye (Grid'e) atla
-                    currentFocusIndex = 4; // Sidebar'da 4 eleman var (0,1,2,3), 4. indeks ilk kanaldır
-                } else {
-                    currentFocusIndex++;
-                }
-                applyFocus();
-                e.preventDefault();
-            }
-            else if (keyCode === KEYS.LEFT) {
-                if (!isSidebar) {
-                    if (currentFocusIndex % 3 === 1) { // Eğer grid'in en solundaysa (1, 4, 7 indexleri)
-                        // Sidebar'a geri dön (aktif olan gruba)
-                        currentFocusIndex = 0; // Şimdilik basite indirgedik, 0'a döner
-                    } else {
-                        currentFocusIndex--;
-                    }
-                }
-                applyFocus();
-                e.preventDefault();
-            }
-            else if (keyCode === KEYS.ENTER) {
-                if (currentElement) currentElement.click();
-                e.preventDefault();
+            if(navItems[focusIndex]) {
+                navItems[focusIndex].className += ' focused';
             }
         }
+
+        document.addEventListener('keydown', function(e) {
+            // ES5 mantığında basit yön tuş yönetimi
+            if(e.keyCode === 39) focusIndex++; // Sağ
+            if(e.keyCode === 37) focusIndex--; // Sol
+            if(focusIndex < 0) focusIndex = 0;
+            if(focusIndex >= navItems.length) focusIndex = navItems.length - 1;
+            applyFocus();
+        });
+
+        window.onload = init;
     </script>
 </body>
 </html>
+// --- XTREAM API VERİ ÇEKME FONKSİYONU ---
+function fetchData(action, callback) {
+    // URL yapısı: http://sunucu:port/player_api.php?username=X&password=Y&action=...
+    var baseUrl = "http://SENIN_URL_BURAYA"; 
+    var username = "KULLANICI";
+    var password = "SIFRE";
+    var url = baseUrl + "/player_api.php?username=" + username + "&password=" + password + "&action=" + action;
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+            try {
+                var data = JSON.parse(xhr.responseText);
+                callback(data);
+            } catch (e) {
+                console.log("JSON Hatası: " + e.message);
+            }
+        }
+    };
+    xhr.send();
+}
+
+// --- DİNAMİK OLARAK KART OLUŞTURMA ---
+function renderGrid(items) {
+    var grid = document.getElementById('main-grid');
+    grid.innerHTML = ""; // Önce ekranı temizle
+
+    for (var i = 0; i < items.length; i++) {
+        var card = document.createElement('div');
+        card.className = 'card nav-item';
+        // İkon yerine kanal adı veya kategori adı
+        card.innerHTML = '<div class="icon"></div><span>' + (items[i].category_name || items[i].name) + '</span>';
+        
+        // Tıklandığında yapılacak işlem (Kategoriye gir veya kanalı oynat)
+        card.onclick = function() {
+            // Burada tıklanan öğeye göre yeni sayfaya yönlendirme veya video oynatma tetiklenir
+            console.log("Seçildi: " + items[i].category_id);
+        };
+        grid.appendChild(card);
+    }
+    updateNavItems(); // Yeni kartları odaklanılabilir listeye ekle
+}
+
+// --- ANA EKRAN İÇİN İLK ÇAĞRI ---
+function loadDashboard() {
+    // Örnek olarak kategorileri çekelim
+    fetchData("get_live_categories", function(response) {
+        renderGrid(response);
+    });
+}
+
+// Sayfa yüklendiğinde çalıştır
+window.onload = function() {
+    init();
+    loadDashboard();
+};
+// --- VİDEO OYNATICI VE EKRAN GEÇİŞ YÖNETİMİ ---
+
+// Video oynatıcıyı DOM'a dinamik ekle veya gizle
+function playVideo(streamUrl) {
+    var player = document.getElementById('player-screen');
+    if (!player) {
+        player = document.createElement('div');
+        player.id = 'player-screen';
+        player.style.position = 'fixed';
+        player.style.top = '0';
+        player.style.left = '0';
+        player.style.width = '100%';
+        player.style.height = '100%';
+        player.style.background = '#000';
+        player.style.zIndex = '999';
+        
+        var video = document.createElement('video');
+        video.id = 'video-element';
+        video.style.width = '100%';
+        video.style.height = '100%';
+        video.autoplay = true;
+        
+        player.appendChild(video);
+        document.body.appendChild(player);
+    }
+    
+    var videoEl = document.getElementById('video-element');
+    videoEl.src = streamUrl;
+    videoEl.play();
+    
+    // Geri tuşu ile çıkış fonksiyonu
+    currentMode = 'player'; 
+}
+
+// Kumanda Kontrol Sistemi (Spatial Navigation)
+document.addEventListener('keydown', function(e) {
+    var keyCode = e.keyCode;
+    
+    // 461: LG webOS Back tuşu, 27: ESC
+    if (keyCode === 461 || keyCode === 27) {
+        if (currentMode === 'player') {
+            document.getElementById('player-screen').style.display = 'none';
+            document.getElementById('video-element').pause();
+            currentMode = 'grid';
+        }
+        return;
+    }
+
+    if (currentMode === 'grid') {
+        if (keyCode === 39) focusIndex++; // Sağ
+        if (keyCode === 37) focusIndex--; // Sol
+        if (keyCode === 40) focusIndex += 3; // Aşağı (3 kolon varsayımı)
+        if (keyCode === 38) focusIndex -= 3; // Yukarı
+        
+        // Sınır kontrolü
+        if (focusIndex < 0) focusIndex = 0;
+        if (focusIndex >= navItems.length) focusIndex = navItems.length - 1;
+        
+        applyFocus();
+        
+        if (keyCode === 13) { // ENTER / OK
+            navItems[focusIndex].click();
+        }
+    }
+});
+
+// --- UYGULAMA DURUM YÖNETİCİSİ (APP CONTROLLER) ---
+var App = {
+    state: 'login', // 'login', 'main', 'categories', 'channels', 'player'
+    
+    init: function() {
+        console.log("App Başlatıldı...");
+        // Tarayıcıdaki kayıtlı bilgileri al
+        var savedUrl = localStorage.getItem('xtream_url');
+        if (savedUrl) {
+            document.getElementById('xtream-url').value = savedUrl;
+        }
+    },
+
+    changeState: function(newState) {
+        this.state = newState;
+        console.log("Durum değişti: " + newState);
+        // İlgili ekranları burada gizle/göster mantığı ile yönetebilirsin
+    }
+};
+
+// --- EPG VERİSİ YÜKLEYİCİ (Xtream API için) ---
+function loadEPG(channelId) {
+    // EPG verisi için API çağrısı
+    var epgUrl = xtreamData.url + "/player_api.php?username=" + xtreamData.user + "&password=" + xtreamData.pass + "&action=get_simple_data_table&stream_id=" + channelId;
+    
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", epgUrl, true);
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+            var epgData = JSON.parse(xhr.responseText);
+            // EPG verisini arayüzde göster (örneğin player altına)
+            document.getElementById('epg-info').innerHTML = epgData.info.name;
+        }
+    };
+    xhr.send();
+}
+
+// --- SAYFALAMA MANTIĞI (PAGINATION) ---
+var currentPage = 1;
+function loadPage(page) {
+    currentPage = page;
+    // Xtream'den sayfalara bölünmüş veri çekme mantığı buraya gelir
+    // API genellikle &limit=... ve &offset=... destekler
+    console.log("Sayfa yükleniyor: " + page);
+}
+// --- PERFORMANS ODAKLI UI GÜNCELLEME ---
+function renderUI(data, type) {
+    var grid = document.getElementById('main-grid');
+    var html = '';
+    
+    // Döngüyü optimize et
+    for (var i = 0; i < data.length; i++) {
+        var item = data[i];
+        html += '<div class="card nav-item" onclick="handleItemClick(\'' + type + '\', ' + (item.stream_id || item.category_id) + ')">' +
+                '<div class="icon"></div>' +
+                '<span>' + (item.name || item.category_name) + '</span>' +
+                '</div>';
+    }
+    
+    // Tek seferde DOM güncelleme
+    grid.innerHTML = html;
+    updateNavItems();
+}
+
+// --- TIKLAMA İŞLEYİCİ ---
+function handleItemClick(type, id) {
+    if (type === 'category') {
+        // Kategoriden kanal listesine geçiş
+        fetchData("get_live_streams&category_id=" + id, function(streams) {
+            renderUI(streams, 'channel');
+        });
+    } else {
+        // Kanaldan oynatıcıya geçiş
+        var streamUrl = xtreamData.url + "/live/" + xtreamData.user + "/" + xtreamData.pass + "/" + id + ".m3u8";
+        playVideo(streamUrl);
+    }
+}
+
+// --- TV KUMANDA SİSTEMİ (FOCUS HATA AYIKLAMA) ---
+function applyFocus() {
+    var items = document.getElementsByClassName('nav-item');
+    for (var i = 0; i < items.length; i++) {
+        items[i].classList.remove('focused');
+    }
+    
+    if (items[focusIndex]) {
+        items[focusIndex].classList.add('focused');
+        // TV'de ekranın odaklanan öğeyi takip etmesi için:
+        items[focusIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+// --- ES5 GÜVENLİ YARDIMCI FONKSİYONLAR ---
+
+// ClassList yerine eski tarayıcı uyumlu ( className ) manipülasyonu
+function setFocus(element, isFocused) {
+    var className = element.className;
+    if (isFocused) {
+        if (className.indexOf('focused') === -1) {
+            element.className = className + ' focused';
+        }
+    } else {
+        element.className = className.replace(' focused', '').replace('  ', ' ');
+    }
+}
+
+// scrollIntoView yerine manuel scroll hesaplama (LG TV için kararlı çözüm)
+function scrollToElement(element) {
+    var container = document.getElementById('main-grid');
+    var offsetTop = element.offsetTop;
+    var containerHeight = container.offsetHeight;
+    
+    // Eğer eleman görünür alanın dışındaysa kaydır
+    if (offsetTop > containerHeight || offsetTop < container.scrollTop) {
+        container.scrollTop = offsetTop - (containerHeight / 2);
+    }
+}
+
+// XMLHttpRequest için hata yönetimi (Crash Prevention)
+function secureRequest(url, callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    callback(data);
+                } catch (e) {
+                    // API yanıtı bozuksa uygulamayı kilitleme
+                    console.log("Data Parse Error: " + e.message);
+                }
+            } else {
+                console.log("Network Error: Status " + xhr.status);
+            }
+        }
+    };
+    
+    xhr.onerror = function() {
+        console.log("Request Failed");
+    };
+    
+    xhr.send();
+}
+// --- FAVORİLER SİSTEMİ (KALICI VERİ DEPOLAMA) ---
+
+// Favorilere ekle/çıkar fonksiyonu
+function toggleFavorite(channelId, channelName) {
+    var favorites = getFavorites();
+    var index = -1;
+    
+    // Zaten favoride mi kontrol et
+    for (var i = 0; i < favorites.length; i++) {
+        if (favorites[i].id === channelId) {
+            index = i;
+            break;
+        }
+    }
+    
+    if (index > -1) {
+        // Favorilerden çıkar
+        favorites.splice(index, 1);
+    } else {
+        // Favorilere ekle
+        favorites.push({ id: channelId, name: channelName });
+    }
+    
+    // localStorage'a kaydet (ES5 stringify)
+    localStorage.setItem('my_favorites', JSON.stringify(favorites));
+    console.log("Favoriler güncellendi.");
+}
+
+// Favorileri getir
+function getFavorites() {
+    var favs = localStorage.getItem('my_favorites');
+    if (favs) {
+        try {
+            return JSON.parse(favs);
+        } catch (e) {
+            return [];
+        }
+    }
+    return [];
+}
+
+// --- FAVORİLERİ GÖRÜNTÜLEME ---
+function renderFavorites() {
+    var favs = getFavorites();
+    var grid = document.getElementById('main-grid');
+    grid.innerHTML = '<h2>Favorilerim</h2>';
+    
+    for (var i = 0; i < favs.length; i++) {
+        var card = document.createElement('div');
+        card.className = 'card nav-item';
+        card.innerHTML = '<span>' + favs[i].name + '</span>';
+        card.onclick = function() { 
+            // Seçilen favori kanalı oynat
+            handleItemClick('channel', favs[i].id); 
+        };
+        grid.appendChild(card);
+    }
+}
