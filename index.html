@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0b0f19; color: #fff; font-family: sans-serif; }
+    #sidebar { position: absolute; left: 0; top: 0; width: 250px; height: 100%; background: #111827; border-right: 2px solid #1f2937; }
+    .menu-item { padding: 25px 20px; border-bottom: 1px solid #1f2937; cursor: pointer; color: #9ca3af; }
+    .menu-item.focused { background: #1e293b; border-left: 5px solid #00e5ff; color: #fff; }
+    #content { position: absolute; left: 250px; top: 0; width: calc(100% - 250px); height: 100%; padding: 40px; }
+    #grid { display: flex; flex-wrap: wrap; gap: 20px; }
+    .card { width: 190px; height: 130px; background: #1f2937; border-radius: 8px; border: 3px solid transparent; display: flex; align-items: center; justify-content: center; text-align: center; color: #fff; }
+    .card.focused { border-color: #00e5ff; background: #374151; box-shadow: 0 0 15px #00e5ff; transform: scale(1.05); }
+</style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div class="menu-item focused">Canlı TV</div>
+        <div class="menu-item">Filmler</div>
+        <div class="menu-item">Diziler</div>
+        <div class="menu-item">Ayarlar</div>
+    </div>
+
+    <div id="content">
+        <div id="grid">
+            <div class="card focused">Kanal 1</div>
+            <div class="card">Kanal 2</div>
+            <div class="card">Kanal 3</div>
+            <div class="card">Kanal 4</div>
+            <div class="card">Kanal 5</div>
+        </div>
+    </div>
+    <script>
+        var focusIndex = 0;
+        var navItems = document.getElementsByClassName('nav-item-all'); // Tüm odaklanılabilir öğeler
+        
+        // Basit odaklanma fonksiyonu
+        function updateFocus(newIndex) {
+            var all = document.querySelectorAll('.menu-item, .card');
+            for (var i = 0; i < all.length; i++) {
+                all[i].className = all[i].className.replace(' focused', '');
+            }
+            if (newIndex >= 0 && newIndex < all.length) {
+                focusIndex = newIndex;
+                all[focusIndex].className += ' focused';
+            }
+        }
+
+        // Kumanda tuşlarını dinle
+        document.addEventListener('keydown', function(e) {
+            var keyCode = e.keyCode;
+            if (keyCode === 39) updateFocus(focusIndex + 1); // Sağ
+            if (keyCode === 37) updateFocus(focusIndex - 1); // Sol
+            if (keyCode === 40) updateFocus(focusIndex + 3); // Aşağı
+            if (keyCode === 38) updateFocus(focusIndex - 3); // Yukarı
+        });
+    </script>
+</body>
+</html>
