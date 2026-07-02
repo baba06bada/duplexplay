@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>DuplexPlay</title>
+    <title>DuplexPlay - Demo</title>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
         body { background:#0a0a0a; color:#fff; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; font-size:14px; height:100vh; overflow:hidden; user-select:none; }
@@ -16,7 +16,7 @@
         .login-box input:focus { border-color:#00bfff; outline:none; }
         .login-box .btn { width:100%; padding:12px; margin-top:20px; background:#00bfff; border:none; border-radius:4px; color:#000; font-size:16px; font-weight:bold; cursor:pointer; }
         .login-box .btn:active { background:#0099cc; }
-        #login-status { text-align:center; margin-top:12px; font-size:13px; color:#ff6b6b; }
+        #login-status { text-align:center; margin-top:12px; font-size:13px; color:#6bff6b; }
         .header { display:flex; justify-content:space-between; align-items:center; padding:12px 18px; background:#111; border-bottom:1px solid #222; flex-shrink:0; }
         .header .logo { font-size:22px; font-weight:300; color:#00bfff; letter-spacing:1px; }
         .header .time { font-size:14px; color:#aaa; }
@@ -73,16 +73,16 @@
 <div id="login-screen" class="screen active">
     <div class="login-box">
         <h1>DuplexPlay</h1>
-        <label>Sunucu</label>
-        <input type="text" id="server-input" value="tekno072.xyz">
+        <label>Sunucu (Demo)</label>
+        <input type="text" id="server-input" value="demo-server">
         <label>Port</label>
         <input type="text" id="port-input" value="8080">
         <label>Kullanıcı Adı</label>
-        <input type="text" id="username-input" value="bny5748">
+        <input type="text" id="username-input" value="demo">
         <label>Şifre</label>
-        <input type="password" id="password-input" value="bny1401yy00">
-        <button class="btn" onclick="loginAction()">Giriş Yap</button>
-        <div id="login-status"></div>
+        <input type="password" id="password-input" value="demo">
+        <button class="btn" onclick="loginAction()">Giriş Yap (Demo)</button>
+        <div id="login-status">🌟 Demo mod aktif - Tıklayınca ana ekrana geçer</div>
     </div>
 </div>
 
@@ -115,8 +115,8 @@
         <button class="player-close" id="player-close">✕</button>
     </div>
     <div class="player-controls">
-        <div class="title" id="player-title">Yayın</div>
-        <div class="epg" id="player-epg">EPG verisi yok</div>
+        <div class="title" id="player-title">Demo Yayın</div>
+        <div class="epg" id="player-epg">Demo EPG - Örnek veri</div>
     </div>
 </div>
 
@@ -132,11 +132,67 @@
 
 <script>
 /* ================================================================
-   SAFE ES5 - Chromium 34 / webOS 2.2.3 uyumlu
-   SADECE Xtream API (player_api.php) - M3U YOK
+   SAFE ES5 - LG webOS 2.2.3 uyumlu
+   DEMO MOD - Hiç API isteği yapmaz, örnek verilerle çalışır
    ================================================================ */
 
-var baseUrl = '';
+// ---- Demo veriler ----
+var demoLiveCategories = [
+    { category_id: 1, category_name: 'Haber' },
+    { category_id: 2, category_name: 'Spor' },
+    { category_id: 3, category_name: 'Sinema' },
+    { category_id: 4, category_name: 'Belgesel' }
+];
+
+var demoLiveStreams = [
+    { stream_id: 101, name: 'TRT Haber', category_id: 1, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=TRT+Haber', rating: '4.5' },
+    { stream_id: 102, name: 'CNN Türk', category_id: 1, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=CNN+Türk', rating: '4.2' },
+    { stream_id: 103, name: 'NTV', category_id: 1, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=NTV', rating: '4.0' },
+    { stream_id: 201, name: 'S Sport', category_id: 2, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=S+Sport', rating: '4.8' },
+    { stream_id: 202, name: 'Tivibu Spor', category_id: 2, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=Tivibu+Spor', rating: '4.6' },
+    { stream_id: 203, name: 'beIN Sports', category_id: 2, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=beIN+Sports', rating: '4.9' },
+    { stream_id: 301, name: 'Vip Channel', category_id: 3, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=Vip+Channel', rating: '4.3' },
+    { stream_id: 302, name: 'Loca 1 HD', category_id: 3, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=Loca+1+HD', rating: '4.1' },
+    { stream_id: 303, name: 'Loca 2 HD', category_id: 3, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=Loca+2+HD', rating: '4.0' },
+    { stream_id: 401, name: 'National Geographic', category_id: 4, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=Nat+Geo', rating: '4.7' },
+    { stream_id: 402, name: 'Discovery Channel', category_id: 4, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=Discovery', rating: '4.6' }
+];
+
+var demoVodCategories = [
+    { category_id: 10, category_name: 'Yerli Filmler' },
+    { category_id: 11, category_name: 'Yabancı Filmler' },
+    { category_id: 12, category_name: 'Komedi' },
+    { category_id: 13, category_name: 'Korku' }
+];
+
+var demoVodStreams = [
+    { stream_id: 1001, name: 'Kocalar İş Başında (2026)', category_id: 10, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=Kocalar+İş+Başında', rating: '4.2' },
+    { stream_id: 1002, name: 'Undertone (2026)', category_id: 10, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=Undertone', rating: '3.9' },
+    { stream_id: 1003, name: 'Gece Devriyesi (2026)', category_id: 10, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=Gece+Devriyesi', rating: '4.5' },
+    { stream_id: 1004, name: 'Extreme Makeover (2026)', category_id: 11, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=Extreme+Makeover', rating: '4.0' },
+    { stream_id: 1005, name: 'Dante\'nin Elinden (2026)', category_id: 11, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=Dante', rating: '4.3' },
+    { stream_id: 1006, name: 'Bir Koyun Polisiyesi (2026)', category_id: 12, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=Bir+Koyun', rating: '3.7' },
+    { stream_id: 1007, name: 'Korku Seansı (2025)', category_id: 13, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=Korku+Seansı', rating: '4.1' }
+];
+
+var demoSeriesCategories = [
+    { category_id: 20, category_name: 'Yabancı Diziler' },
+    { category_id: 21, category_name: 'Netflix Türk' },
+    { category_id: 22, category_name: 'Exxen' },
+    { category_id: 23, category_name: 'Disney+' }
+];
+
+var demoSeriesStreams = [
+    { stream_id: 2001, name: 'Breaking Bad', category_id: 20, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=Breaking+Bad', rating: '4.9' },
+    { stream_id: 2002, name: 'Game of Thrones', category_id: 20, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=GOT', rating: '4.8' },
+    { stream_id: 2003, name: 'The Walking Dead', category_id: 20, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=TWD', rating: '4.4' },
+    { stream_id: 2004, name: 'Kara Para Aşk', category_id: 21, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=Kara+Para', rating: '4.6' },
+    { stream_id: 2005, name: 'Behzat Ç.', category_id: 21, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=Behzat+Ç', rating: '4.7' },
+    { stream_id: 2006, name: 'Fi', category_id: 22, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=Fi', rating: '4.0' },
+    { stream_id: 2007, name: 'The Mandalorian', category_id: 23, stream_icon: 'https://via.placeholder.com/200x112/1a1a1a/00bfff?text=Mandalorian', rating: '4.8' }
+];
+
+// ---- Global değişkenler ----
 var liveStreams = [];
 var vodStreams = [];
 var seriesStreams = [];
@@ -152,12 +208,7 @@ var mainScreen = document.getElementById('main-screen');
 var playerScreen = document.getElementById('player-screen');
 var settingsScreen = document.getElementById('settings-screen');
 
-var serverInput = document.getElementById('server-input');
-var portInput = document.getElementById('port-input');
-var usernameInput = document.getElementById('username-input');
-var passwordInput = document.getElementById('password-input');
 var loginStatus = document.getElementById('login-status');
-
 var headerTime = document.getElementById('header-time');
 var settingsOpen = document.getElementById('settings-open');
 var settingsClose = document.getElementById('settings-close');
@@ -197,165 +248,28 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 
-// ---- Xtream API isteği (zaman aşımı + hata) ----
-function xtreamRequest(endpoint, callback) {
-    var fullUrl = baseUrl + '&' + endpoint;
-    var xhr = new XMLHttpRequest();
-    var isDone = false;
-    var timeoutId = setTimeout(function() {
-        if (!isDone) {
-            isDone = true;
-            callback('Zaman aşımı (15 sn)', null);
-        }
-    }, 15000);
-
-    xhr.open('GET', fullUrl, true);
-    xhr.onreadystatechange = function() {
-        if (isDone) return;
-        if (xhr.readyState === 4) {
-            clearTimeout(timeoutId);
-            isDone = true;
-            if (xhr.status === 200) {
-                try {
-                    var data = JSON.parse(xhr.responseText);
-                    callback(null, data);
-                } catch(e) {
-                    callback('JSON hatası: ' + e.message, null);
-                }
-            } else {
-                callback('HTTP ' + xhr.status + ' ' + xhr.statusText, null);
-            }
-        }
-    };
-    xhr.onerror = function() {
-        if (!isDone) {
-            clearTimeout(timeoutId);
-            isDone = true;
-            callback('Ağ hatası (CORS veya bağlantı sorunu)', null);
-        }
-    };
-    xhr.send();
+// ---- Demo verileri yükle ----
+function loadDemoData() {
+    liveCategories = demoLiveCategories.slice(0);
+    liveStreams = demoLiveStreams.slice(0);
+    vodCategories = demoVodCategories.slice(0);
+    vodStreams = demoVodStreams.slice(0);
+    seriesCategories = demoSeriesCategories.slice(0);
+    seriesStreams = demoSeriesStreams.slice(0);
 }
 
-// ---- Tüm verileri çek ----
-function fetchAllData(callback) {
-    var completed = 0;
-    var total = 3;
-
-    function checkDone() {
-        completed++;
-        if (completed >= total) {
-            callback();
-        }
-    }
-
-    var forceCallback = setTimeout(function() {
-        console.warn('fetchAllData zorunlu zaman aşımı');
-        callback();
-    }, 15000);
-
-    var safeCallback = function() {
-        clearTimeout(forceCallback);
-        callback();
-    };
-
-    var originalCheckDone = checkDone;
-    checkDone = function() {
-        completed++;
-        if (completed >= total) {
-            safeCallback();
-        }
-    };
-
-    // Canlı
-    xtreamRequest('action=get_live_streams', function(err, data) {
-        if (!err && data && data.live_streams) {
-            liveStreams = data.live_streams;
-        } else {
-            liveStreams = [];
-            console.warn('Canlı akış hatası:', err);
-        }
-        xtreamRequest('action=get_live_categories', function(err2, catData) {
-            if (!err2 && catData && catData.categories) {
-                liveCategories = catData.categories;
-            } else {
-                liveCategories = [];
-            }
-            checkDone();
-        });
-    });
-
-    // VOD
-    xtreamRequest('action=get_vod_streams', function(err, data) {
-        if (!err && data && data.vod_streams) {
-            vodStreams = data.vod_streams;
-        } else {
-            vodStreams = [];
-        }
-        xtreamRequest('action=get_vod_categories', function(err2, catData) {
-            if (!err2 && catData && catData.categories) {
-                vodCategories = catData.categories;
-            } else {
-                vodCategories = [];
-            }
-            checkDone();
-        });
-    });
-
-    // Diziler
-    xtreamRequest('action=get_series_streams', function(err, data) {
-        if (!err && data && data.series_streams) {
-            seriesStreams = data.series_streams;
-        } else {
-            seriesStreams = [];
-        }
-        xtreamRequest('action=get_series_categories', function(err2, catData) {
-            if (!err2 && catData && catData.categories) {
-                seriesCategories = catData.categories;
-            } else {
-                seriesCategories = [];
-            }
-            checkDone();
-        });
-    });
-}
-
-// ---- Giriş işlemi ----
-function doLogin(server, port, username, password) {
-    baseUrl = 'http://' + server + ':' + port + '/player_api.php?username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password);
-    loginStatus.textContent = 'Xtream API bağlanıyor...';
-    loginStatus.style.color = '#ffb347';
-    console.log('doLogin -> baseUrl=' + baseUrl);
-
-    fetchAllData(function() {
-        if (liveStreams.length === 0 && vodStreams.length === 0 && seriesStreams.length === 0) {
-            loginStatus.textContent = 'Sunucudan veri alınamadı. Lütfen bilgileri kontrol edin.';
-            loginStatus.style.color = '#ff6b6b';
-            console.error('Hiç veri alınamadı');
-            return;
-        }
-        loginStatus.textContent = 'Giriş başarılı!';
-        loginStatus.style.color = '#6bff6b';
-        setTimeout(function() {
-            showScreen('main-screen');
-            loadTab('live');
-        }, 400);
-    });
-}
-
-// ---- Buton aksiyonu ----
+// ---- Giriş aksiyonu (demo) ----
 function loginAction() {
-    var server = serverInput.value.trim();
-    var port = portInput.value.trim();
-    var username = usernameInput.value.trim();
-    var password = passwordInput.value.trim();
-    if (!server || !port || !username || !password) {
-        loginStatus.textContent = 'Lütfen tüm alanları doldurun.';
-        loginStatus.style.color = '#ff6b6b';
-        return;
-    }
-    console.log('loginAction çağrıldı: server=' + server + ' port=' + port + ' user=' + username);
-    doLogin(server, port, username, password);
+    loginStatus.textContent = '🌟 Demo mod: Veriler yükleniyor...';
+    loginStatus.style.color = '#ffb347';
+    console.log('Demo giriş yapılıyor...');
+    loadDemoData();
+    setTimeout(function() {
+        loginStatus.textContent = '✅ Demo giriş başarılı!';
+        loginStatus.style.color = '#6bff6b';
+        showScreen('main-screen');
+        loadTab('live');
+    }, 500);
 }
 
 // ---- Tab ve kategori görünümü ----
@@ -375,10 +289,10 @@ function loadTab(tab) {
 function renderCategoryView(tab) {
     var catList = [];
     var title = '';
-    if (tab === 'live') { catList = liveCategories; title = 'Canlı Kategoriler'; }
-    else if (tab === 'vod') { catList = vodCategories; title = 'Film Kategorileri'; }
-    else if (tab === 'series') { catList = seriesCategories; title = 'Dizi Kategorileri'; }
-    else if (tab === 'catchup') { catList = liveCategories; title = 'Yeniden oynatma (Catch-up)'; }
+    if (tab === 'live') { catList = liveCategories; title = 'Canlı Kategoriler (Demo)'; }
+    else if (tab === 'vod') { catList = vodCategories; title = 'Film Kategorileri (Demo)'; }
+    else if (tab === 'series') { catList = seriesCategories; title = 'Dizi Kategorileri (Demo)'; }
+    else if (tab === 'catchup') { catList = liveCategories; title = 'Yeniden oynatma (Demo)'; }
 
     if (catList.length === 0) {
         catList = [{ category_id: 0, category_name: 'Tümü' }];
@@ -431,7 +345,7 @@ function renderStreams(tab, categoryId) {
     var container = document.getElementById('stream-list-container');
     if (!container) return;
     if (filtered.length === 0) {
-        container.innerHTML = '<div class="no-data">Bu kategoride yayın yok.</div>';
+        container.innerHTML = '<div class="no-data">Bu kategoride yayın yok (demo).</div>';
         return;
     }
 
@@ -464,53 +378,27 @@ function renderStreams(tab, categoryId) {
             var id = card.getAttribute('data-id');
             var type = card.getAttribute('data-type');
             var name = card.getAttribute('data-name');
-            playStream(id, type, name);
+            playDemoStream(id, type, name);
         });
     }
 }
 
-// ---- Oynatma ----
-function playStream(id, type, name) {
+// ---- Demo oynatma ----
+function playDemoStream(id, type, name) {
     showScreen('player-screen');
-    playerTitle.textContent = name || 'Yayın';
-    playerEpg.textContent = 'EPG yükleniyor...';
+    playerTitle.textContent = name || 'Demo Yayın';
+    playerEpg.textContent = 'Demo EPG - Örnek yayın akışı';
 
-    var server = serverInput.value;
-    var port = portInput.value;
-    var username = usernameInput.value;
-    var password = passwordInput.value;
-
-    var url = '';
-    if (type === 'live' || type === 'catchup') {
-        url = 'http://' + server + ':' + port + '/live/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + id + '.ts';
-    } else if (type === 'movie') {
-        url = 'http://' + server + ':' + port + '/movie/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + id + '.ts';
-    } else {
-        alert('Dizi oynatma henüz desteklenmiyor.');
-        showScreen('main-screen');
-        return;
-    }
-
-    playerVideo.src = url;
+    // Demo video olarak örnek bir video kullan (Big Buck Bunny)
+    var demoUrl = 'https://www.w3schools.com/html/mov_bbb.mp4';
+    playerVideo.src = demoUrl;
     playerVideo.load();
     playerVideo.play();
 
-    if (type === 'live' || type === 'catchup') {
-        xtreamRequest('action=get_short_epg&stream_id=' + id, function(err, data) {
-            if (!err && data && data.epg_data) {
-                var epgText = '';
-                for (var i = 0; i < data.epg_data.length; i++) {
-                    var ep = data.epg_data[i];
-                    epgText += ep.title + ' (' + ep.start + '-' + ep.end + ') ';
-                }
-                playerEpg.textContent = epgText || 'EPG verisi yok';
-            } else {
-                playerEpg.textContent = 'EPG verisi yok';
-            }
-        });
-    } else {
-        playerEpg.textContent = 'VOD - ' + name;
-    }
+    // Sahte EPG
+    setTimeout(function() {
+        playerEpg.textContent = '📺 ' + name + ' - Şu an: Demo programı (19:00-20:00)';
+    }, 1000);
 }
 
 // ---- Diğer olaylar ----
@@ -521,8 +409,8 @@ playerClose.addEventListener('click', function() {
     playerVideo.src = '';
     showScreen('main-screen');
 });
-recentBtn.addEventListener('click', function() { alert('Son çalınanlar listesi henüz uygulanmadı.'); });
-favoritesBtn.addEventListener('click', function() { alert('Sık kullanılanlar yöneticisi henüz uygulanmadı.'); });
+recentBtn.addEventListener('click', function() { alert('Son çalınanlar (Demo) - Henüz uygulanmadı.'); });
+favoritesBtn.addEventListener('click', function() { alert('Sık kullanılanlar (Demo) - Henüz uygulanmadı.'); });
 
 for (var i = 0; i < tabs.length; i++) {
     tabs[i].addEventListener('click', function() {
@@ -536,7 +424,7 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-console.log('DuplexPlay başlatıldı (Sadece Xtream API)');
+console.log('DuplexPlay DEMO mod başlatıldı - Hiç API isteği yapılmaz');
 </script>
 </body>
 </html>
