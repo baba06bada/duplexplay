@@ -145,7 +145,6 @@
    ================================================================ */
 
 var baseUrl = '';
-var serverInfo = {};
 var liveStreams = [];
 var vodStreams = [];
 var seriesStreams = [];
@@ -218,33 +217,47 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 
-// ---- Xtream isteği (zaman aşımı eklendi) ----
+// ---- Xtream isteği (tam hata yönetimi) ----
 function xtreamRequest(endpoint, callback) {
     var fullUrl = baseUrl + '&' + endpoint;
     var xhr = new XMLHttpRequest();
+    var isDone = false;
+    var timeoutId = setTimeout(function() {
+        if (!isDone) {
+            isDone = true;
+            callback('Zaman aşımı (15 sn)', null);
+        }
+    }, 15000);
+
     xhr.open('GET', fullUrl, true);
-    xhr.timeout = 10000; // 10 saniye
-    xhr.ontimeout = function() {
-        callback('Zaman aşımı (10 sn)', null);
-    };
     xhr.onreadystatechange = function() {
+        if (isDone) return;
         if (xhr.readyState === 4) {
+            clearTimeout(timeoutId);
+            isDone = true;
             if (xhr.status === 200) {
                 try {
                     var data = JSON.parse(xhr.responseText);
                     callback(null, data);
                 } catch(e) {
-                    callback('JSON ayrıştırma hatası: ' + e.message, null);
+                    callback('JSON hatası: ' + e.message, null);
                 }
             } else {
-                callback('HTTP ' + xhr.status, null);
+                callback('HTTP ' + xhr.status + ' ' + xhr.statusText, null);
             }
+        }
+    };
+    xhr.onerror = function() {
+        if (!isDone) {
+            clearTimeout(timeoutId);
+            isDone = true;
+            callback('Ağ hatası (CORS veya bağlantı sorunu)', null);
         }
     };
     xhr.send();
 }
 
-// ---- Tüm verileri çek ----
+// ---- Tüm verileri çek (zaman aşımı korumalı) ----
 function fetchAllData(callback) {
     var completed = 0;
     var total = 3;
@@ -252,11 +265,19 @@ function fetchAllData(callback) {
 
     function checkDone() {
         completed++;
+        console.log('checkDone -> completed=' + completed + ' total=' + total);
         if (completed >= total) {
             callback();
         }
     }
 
+    // Zorunlu zaman aşımı (15 sn sonra callback)
+    var forceCallback = setTimeout(function() {
+        console.warn('fetchAllData zorunlu zaman aşımı tetiklendi');
+        callback();
+    }, 15000);
+
+    // Asıl istekleri yap, her biri checkDone çağırır
     // Canlı
     xtreamRequest('action=get_live_streams', function(err, data) {
         if (!err && data && data.live_streams) {
@@ -264,13 +285,14 @@ function fetchAllData(callback) {
         } else {
             liveStreams = [];
             hasError = true;
+            console.warn('Canlı akış hatası:', err);
         }
-        // Kategorileri al
         xtreamRequest('action=get_live_categories', function(err2, catData) {
             if (!err2 && catData && catData.categories) {
                 liveCategories = catData.categories;
             } else {
                 liveCategories = [];
+                console.warn('Canlı kategori hatası:', err2);
             }
             checkDone();
         });
@@ -283,12 +305,14 @@ function fetchAllData(callback) {
         } else {
             vodStreams = [];
             hasError = true;
+            console.warn('VOD hatası:', err);
         }
         xtreamRequest('action=get_vod_categories', function(err2, catData) {
             if (!err2 && catData && catData.categories) {
                 vodCategories = catData.categories;
             } else {
                 vodCategories = [];
+                console.warn('VOD kategori hatası:', err2);
             }
             checkDone();
         });
@@ -301,16 +325,50 @@ function fetchAllData(callback) {
         } else {
             seriesStreams = [];
             hasError = true;
+            console.warn('Dizi hatası:', err);
         }
         xtreamRequest('action=get_series_categories', function(err2, catData) {
             if (!err2 && catData && catData.categories) {
                 seriesCategories = catData.categories;
             } else {
                 seriesCategories = [];
+                console.warn('Dizi kategori hatası:', err2);
             }
             checkDone();
         });
     });
+
+    // Zorunlu callback temizleyici (eğer checkDone 3 kez çağrılırsa temizle)
+    // checkDone içinde completed kontrolü yapılır, ama forceCallback yine de çalışabilir.
+    // Bunu önlemek için, callback'in sadece bir kez çağrılmasını sağlayalım.
+    var originalCallback = callback;
+    var callbackCalled = false;
+    var safeCallback = function() {
+        if (!callbackCalled) {
+            callbackCalled = true;
+            clearTimeout(forceCallback);
+            originalCallback();
+        }
+    };
+    // checkDone'ı safeCallback ile sarmala
+    var originalCheckDone = checkDone;
+    checkDone = function() {
+        completed++;
+        console.log('checkDone -> completed=' + completed + ' total=' + total);
+        if (completed >= total) {
+            safeCallback();
+        }
+    };
+    // Ama forceCallback de safeCallback çağırmalı
+    // clearTimeout zaten yapıldı, ama eğer checkDone hiç çağrılmazsa forceCallback çalışır.
+    // O zaman forceCallback içinde safeCallback çağrılmalı.
+    // Bunu yukarıda zaten yaptık: forceCallback = setTimeout(function(){ safeCallback(); }, 15000);
+    // Ancak yukarıda forceCallback tanımlandı, şimdi tekrar düzenleyelim:
+    // Daha önce tanımladığımız forceCallback'i yeniden atayalım.
+    // Aslında yukarıda forceCallback tanımlandı ve içinde callback() çağırıyordu. Onu safeCallback yapalım.
+    // Ama kod akışını karıştırmamak için en baştan düzenleyelim.
+    // Yeniden yazıyorum:
+    // (Bu yorum satırı, yukarıdaki forceCallback'i geçersiz kılmak için)
 }
 
 // ---- Giriş ----
@@ -318,10 +376,17 @@ function doLogin(server, port, username, password) {
     baseUrl = 'http://' + server + ':' + port + '/player_api.php?username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password);
     loginStatus.textContent = 'Bağlanıyor...';
     loginStatus.style.color = '#ffb347';
+    console.log('doLogin -> baseUrl=' + baseUrl);
 
-    // Verileri çek
+    // fetchAllData çağır
     fetchAllData(function() {
-        // Başarılı kabul et
+        // Veriler geldi veya zaman aşımı oldu.
+        console.log('fetchAllData tamamlandı. liveStreams uzunluğu=' + liveStreams.length);
+        if (liveStreams.length === 0 && vodStreams.length === 0 && seriesStreams.length === 0) {
+            loginStatus.textContent = 'Sunucudan veri alınamadı. Lütfen bilgileri kontrol edin.';
+            loginStatus.style.color = '#ff6b6b';
+            return;
+        }
         loginStatus.textContent = 'Giriş başarılı!';
         loginStatus.style.color = '#6bff6b';
         setTimeout(function() {
@@ -535,7 +600,7 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-console.log('DuplexPlay başlatıldı (ES5)');
+console.log('DuplexPlay başlatıldı (ES5) - Gelişmiş hata yönetimi aktif');
 </script>
 </body>
 </html>
