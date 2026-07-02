@@ -16,9 +16,6 @@
         .login-box input:focus { border-color:#00bfff; outline:none; }
         .login-box .btn { width:100%; padding:12px; margin-top:20px; background:#00bfff; border:none; border-radius:4px; color:#000; font-size:16px; font-weight:bold; cursor:pointer; }
         .login-box .btn:active { background:#0099cc; }
-        .login-box .url-or { text-align:center; margin:12px 0; color:#555; font-size:13px; }
-        .login-box .btn-secondary { background:#333; color:#fff; margin-top:5px; }
-        .login-box .btn-secondary:active { background:#444; }
         #login-status { text-align:center; margin-top:12px; font-size:13px; color:#ff6b6b; }
         .header { display:flex; justify-content:space-between; align-items:center; padding:12px 18px; background:#111; border-bottom:1px solid #222; flex-shrink:0; }
         .header .logo { font-size:22px; font-weight:300; color:#00bfff; letter-spacing:1px; }
@@ -85,10 +82,6 @@
         <label>Şifre</label>
         <input type="password" id="password-input" value="bny1401yy00">
         <button class="btn" onclick="loginAction()">Giriş Yap</button>
-        <div class="url-or">— veya —</div>
-        <label>Xtream / M3U URL</label>
-        <input type="text" id="url-input" value="http://tekno072.xyz:8080/get.php?username=bny5748&password=bny1401yy00&type=m3u_plus_plus">
-        <button class="btn btn-secondary" onclick="urlLoginAction()">URL ile Giriş</button>
         <div id="login-status"></div>
     </div>
 </div>
@@ -140,12 +133,10 @@
 <script>
 /* ================================================================
    SAFE ES5 - Chromium 34 / webOS 2.2.3 uyumlu
-   onclick kullanımı ile daha sağlam olay bağlama
+   SADECE Xtream API (player_api.php) - M3U YOK
    ================================================================ */
 
-// ---- Global değişkenler ----
 var baseUrl = '';
-var isM3U = false;
 var liveStreams = [];
 var vodStreams = [];
 var seriesStreams = [];
@@ -155,9 +146,7 @@ var seriesCategories = [];
 var currentTab = 'live';
 var currentCategoryId = 0;
 var currentCategoryName = 'Tümü';
-var m3uStreams = [];
 
-// ---- DOM referansları (cache) ----
 var loginScreen = document.getElementById('login-screen');
 var mainScreen = document.getElementById('main-screen');
 var playerScreen = document.getElementById('player-screen');
@@ -167,7 +156,6 @@ var serverInput = document.getElementById('server-input');
 var portInput = document.getElementById('port-input');
 var usernameInput = document.getElementById('username-input');
 var passwordInput = document.getElementById('password-input');
-var urlInput = document.getElementById('url-input');
 var loginStatus = document.getElementById('login-status');
 
 var headerTime = document.getElementById('header-time');
@@ -184,7 +172,6 @@ var playerTitle = document.getElementById('player-title');
 var playerEpg = document.getElementById('player-epg');
 var playerClose = document.getElementById('player-close');
 
-// ---- Yardımcı fonksiyonlar ----
 function showScreen(id) {
     var screens = document.getElementsByClassName('screen');
     for (var i = 0; i < screens.length; i++) {
@@ -204,22 +191,13 @@ function updateClock() { headerTime.textContent = formatTime(); }
 setInterval(updateClock, 1000);
 updateClock();
 
-function getParameterByName(url, name) {
-    name = name.replace(/[\[\]]/g, '\\$&');
-    var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)');
-    var results = regex.exec(url);
-    if (!results) return null;
-    if (!results[2]) return '';
-    return decodeURIComponent(results[2].replace(/\+/g, ' '));
-}
-
 function escapeHtml(text) {
     if (!text) return '';
     var map = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'};
     return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 
-// ---- Xtream API isteği ----
+// ---- Xtream API isteği (zaman aşımı + hata) ----
 function xtreamRequest(endpoint, callback) {
     var fullUrl = baseUrl + '&' + endpoint;
     var xhr = new XMLHttpRequest();
@@ -259,154 +237,7 @@ function xtreamRequest(endpoint, callback) {
     xhr.send();
 }
 
-// ---- M3U indir ve parse ----
-function loadM3U(url, callback) {
-    var xhr = new XMLHttpRequest();
-    var isDone = false;
-    var timeoutId = setTimeout(function() {
-        if (!isDone) {
-            isDone = true;
-            callback('Zaman aşımı (15 sn) - M3U indirilemedi', null);
-        }
-    }, 15000);
-
-    xhr.open('GET', url, true);
-    xhr.onreadystatechange = function() {
-        if (isDone) return;
-        if (xhr.readyState === 4) {
-            clearTimeout(timeoutId);
-            isDone = true;
-            if (xhr.status === 200) {
-                callback(null, xhr.responseText);
-            } else {
-                callback('HTTP ' + xhr.status + ' M3U indirilemedi', null);
-            }
-        }
-    };
-    xhr.onerror = function() {
-        if (!isDone) {
-            clearTimeout(timeoutId);
-            isDone = true;
-            callback('Ağ hatası - M3U indirilemedi', null);
-        }
-    };
-    xhr.send();
-}
-
-function parseM3U(data) {
-    var lines = data.split(/\r?\n/);
-    var streams = [];
-    var categoriesMap = {};
-    var categoryIdCounter = 0;
-    var currentExtinf = null;
-
-    for (var i = 0; i < lines.length; i++) {
-        var line = lines[i].trim();
-        if (line.indexOf('#EXTINF') === 0) {
-            var info = line;
-            var name = '';
-            var group = 'Diğer';
-            var logo = '';
-            var commaIdx = info.lastIndexOf(',');
-            if (commaIdx !== -1) {
-                name = info.substring(commaIdx + 1).trim();
-            }
-            var groupMatch = info.match(/group-title="([^"]*)"/);
-            if (groupMatch) group = groupMatch[1] || 'Diğer';
-            var logoMatch = info.match(/tvg-logo="([^"]*)"/);
-            if (logoMatch) logo = logoMatch[1] || '';
-            var streamId = 'm3u_' + i;
-            currentExtinf = {
-                id: streamId,
-                name: name || 'İsimsiz',
-                group: group,
-                logo: logo,
-                url: ''
-            };
-        } else if (line && line.indexOf('#') !== 0 && currentExtinf) {
-            currentExtinf.url = line;
-            var catId = categoriesMap[group];
-            if (catId === undefined) {
-                categoryIdCounter++;
-                catId = categoryIdCounter;
-                categoriesMap[group] = catId;
-                liveCategories.push({
-                    category_id: catId,
-                    category_name: group
-                });
-            }
-            streams.push({
-                stream_id: currentExtinf.id,
-                name: currentExtinf.name,
-                category_id: catId,
-                stream_icon: currentExtinf.logo,
-                url: currentExtinf.url
-            });
-            currentExtinf = null;
-        }
-    }
-    if (liveCategories.length === 0) {
-        liveCategories.push({ category_id: 1, category_name: 'Tümü' });
-    }
-    return streams;
-}
-
-// ---- M3U ile giriş ----
-function doLoginM3U(m3uUrl) {
-    loginStatus.textContent = 'M3U indiriliyor...';
-    loginStatus.style.color = '#ffb347';
-    loadM3U(m3uUrl, function(err, data) {
-        if (err) {
-            loginStatus.textContent = 'Hata: ' + err;
-            loginStatus.style.color = '#ff6b6b';
-            console.error('M3U hatası:', err);
-            return;
-        }
-        try {
-            m3uStreams = parseM3U(data);
-            liveStreams = m3uStreams.slice(0);
-            vodStreams = [];
-            seriesStreams = [];
-            vodCategories = [];
-            seriesCategories = [];
-
-            loginStatus.textContent = 'M3U başarıyla yüklendi (' + liveStreams.length + ' kanal)';
-            loginStatus.style.color = '#6bff6b';
-            setTimeout(function() {
-                showScreen('main-screen');
-                loadTab('live');
-            }, 400);
-        } catch (e) {
-            loginStatus.textContent = 'M3U parse hatası: ' + e.message;
-            loginStatus.style.color = '#ff6b6b';
-            console.error('Parse hatası:', e);
-        }
-    });
-}
-
-// ---- Xtream API ile giriş (tüm veriler) ----
-function doLogin(server, port, username, password) {
-    baseUrl = 'http://' + server + ':' + port + '/player_api.php?username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password);
-    loginStatus.textContent = 'Xtream API bağlanıyor...';
-    loginStatus.style.color = '#ffb347';
-    console.log('doLogin -> baseUrl=' + baseUrl);
-
-    fetchAllData(function() {
-        if (liveStreams.length === 0 && vodStreams.length === 0 && seriesStreams.length === 0) {
-            loginStatus.textContent = 'Sunucudan veri alınamadı. Lütfen bilgileri kontrol edin.';
-            loginStatus.style.color = '#ff6b6b';
-            return;
-        }
-        loginStatus.textContent = 'Giriş başarılı!';
-        loginStatus.style.color = '#6bff6b';
-        setTimeout(function() {
-            showScreen('main-screen');
-            loadTab('live');
-        }, 400);
-    });
-}
-
-// ---- fetchAllData ----
+// ---- Tüm verileri çek ----
 function fetchAllData(callback) {
     var completed = 0;
     var total = 3;
@@ -487,6 +318,44 @@ function fetchAllData(callback) {
             checkDone();
         });
     });
+}
+
+// ---- Giriş işlemi ----
+function doLogin(server, port, username, password) {
+    baseUrl = 'http://' + server + ':' + port + '/player_api.php?username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password);
+    loginStatus.textContent = 'Xtream API bağlanıyor...';
+    loginStatus.style.color = '#ffb347';
+    console.log('doLogin -> baseUrl=' + baseUrl);
+
+    fetchAllData(function() {
+        if (liveStreams.length === 0 && vodStreams.length === 0 && seriesStreams.length === 0) {
+            loginStatus.textContent = 'Sunucudan veri alınamadı. Lütfen bilgileri kontrol edin.';
+            loginStatus.style.color = '#ff6b6b';
+            console.error('Hiç veri alınamadı');
+            return;
+        }
+        loginStatus.textContent = 'Giriş başarılı!';
+        loginStatus.style.color = '#6bff6b';
+        setTimeout(function() {
+            showScreen('main-screen');
+            loadTab('live');
+        }, 400);
+    });
+}
+
+// ---- Buton aksiyonu ----
+function loginAction() {
+    var server = serverInput.value.trim();
+    var port = portInput.value.trim();
+    var username = usernameInput.value.trim();
+    var password = passwordInput.value.trim();
+    if (!server || !port || !username || !password) {
+        loginStatus.textContent = 'Lütfen tüm alanları doldurun.';
+        loginStatus.style.color = '#ff6b6b';
+        return;
+    }
+    console.log('loginAction çağrıldı: server=' + server + ' port=' + port + ' user=' + username);
+    doLogin(server, port, username, password);
 }
 
 // ---- Tab ve kategori görünümü ----
@@ -577,7 +446,7 @@ function renderStreams(tab, categoryId) {
         if (tab === 'series') type = 'series';
         if (tab === 'catchup') type = 'catchup';
 
-        html += '<div class="stream-card" data-id="' + id + '" data-type="' + type + '" data-name="' + escapeHtml(name) + '" data-icon="' + escapeHtml(icon) + '" data-url="' + escapeHtml(item.url || '') + '">';
+        html += '<div class="stream-card" data-id="' + id + '" data-type="' + type + '" data-name="' + escapeHtml(name) + '" data-icon="' + escapeHtml(icon) + '">';
         html += '<div class="thumb">';
         if (icon) html += '<img src="' + escapeHtml(icon) + '" alt="" onerror="this.style.display=\'none\'">';
         else html += '<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;">No Image</div>';
@@ -595,124 +464,56 @@ function renderStreams(tab, categoryId) {
             var id = card.getAttribute('data-id');
             var type = card.getAttribute('data-type');
             var name = card.getAttribute('data-name');
-            var url = card.getAttribute('data-url');
-            playStream(id, type, name, url);
+            playStream(id, type, name);
         });
     }
 }
 
 // ---- Oynatma ----
-function playStream(id, type, name, url) {
+function playStream(id, type, name) {
     showScreen('player-screen');
     playerTitle.textContent = name || 'Yayın';
     playerEpg.textContent = 'EPG yükleniyor...';
 
-    var finalUrl = '';
-    if (url && url.length > 0) {
-        finalUrl = url;
+    var server = serverInput.value;
+    var port = portInput.value;
+    var username = usernameInput.value;
+    var password = passwordInput.value;
+
+    var url = '';
+    if (type === 'live' || type === 'catchup') {
+        url = 'http://' + server + ':' + port + '/live/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + id + '.ts';
+    } else if (type === 'movie') {
+        url = 'http://' + server + ':' + port + '/movie/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + id + '.ts';
     } else {
-        var server = serverInput.value;
-        var port = portInput.value;
-        var username = usernameInput.value;
-        var password = passwordInput.value;
-        if (type === 'live' || type === 'catchup') {
-            finalUrl = 'http://' + server + ':' + port + '/live/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + id + '.ts';
-        } else if (type === 'movie') {
-            finalUrl = 'http://' + server + ':' + port + '/movie/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + id + '.ts';
-        } else {
-            alert('Bu içerik türü henüz desteklenmiyor.');
-            showScreen('main-screen');
-            return;
-        }
+        alert('Dizi oynatma henüz desteklenmiyor.');
+        showScreen('main-screen');
+        return;
     }
 
-    playerVideo.src = finalUrl;
+    playerVideo.src = url;
     playerVideo.load();
     playerVideo.play();
 
     if (type === 'live' || type === 'catchup') {
-        if (!isM3U && baseUrl) {
-            xtreamRequest('action=get_short_epg&stream_id=' + id, function(err, data) {
-                if (!err && data && data.epg_data) {
-                    var epgText = '';
-                    for (var i = 0; i < data.epg_data.length; i++) {
-                        var ep = data.epg_data[i];
-                        epgText += ep.title + ' (' + ep.start + '-' + ep.end + ') ';
-                    }
-                    playerEpg.textContent = epgText || 'EPG verisi yok';
-                } else {
-                    playerEpg.textContent = 'EPG verisi yok';
+        xtreamRequest('action=get_short_epg&stream_id=' + id, function(err, data) {
+            if (!err && data && data.epg_data) {
+                var epgText = '';
+                for (var i = 0; i < data.epg_data.length; i++) {
+                    var ep = data.epg_data[i];
+                    epgText += ep.title + ' (' + ep.start + '-' + ep.end + ') ';
                 }
-            });
-        } else {
-            playerEpg.textContent = 'EPG verisi yok (M3U)';
-        }
+                playerEpg.textContent = epgText || 'EPG verisi yok';
+            } else {
+                playerEpg.textContent = 'EPG verisi yok';
+            }
+        });
     } else {
         playerEpg.textContent = 'VOD - ' + name;
     }
 }
 
-// ---- Giriş butonu aksiyonları (onclick ile çağrılır) ----
-function loginAction() {
-    var server = serverInput.value.trim();
-    var port = portInput.value.trim();
-    var username = usernameInput.value.trim();
-    var password = passwordInput.value.trim();
-    if (!server || !port || !username || !password) {
-        loginStatus.textContent = 'Lütfen tüm alanları doldurun.';
-        loginStatus.style.color = '#ff6b6b';
-        return;
-    }
-    console.log('loginAction çağrıldı: server=' + server + ' port=' + port + ' user=' + username);
-    isM3U = false;
-    doLogin(server, port, username, password);
-}
-
-function urlLoginAction() {
-    var url = urlInput.value.trim();
-    console.log('urlLoginAction çağrıldı, url=' + url);
-    if (!url) {
-        loginStatus.textContent = 'Lütfen geçerli bir URL girin.';
-        loginStatus.style.color = '#ff6b6b';
-        return;
-    }
-
-    // M3U mu kontrol et (get.php veya m3u içeriyorsa)
-    if (url.indexOf('get.php') !== -1 || url.indexOf('.m3u') !== -1 || url.indexOf('m3u_plus') !== -1) {
-        isM3U = true;
-        // Sunucu bilgilerini inputlara yaz
-        var match = url.match(/^https?:\/\/([^\/:]+)(?::(\d+))?/);
-        if (match) {
-            serverInput.value = match[1];
-            portInput.value = match[2] || '80';
-        }
-        var u = getParameterByName(url, 'username');
-        var p = getParameterByName(url, 'password');
-        if (u) usernameInput.value = u;
-        if (p) passwordInput.value = p;
-        doLoginM3U(url);
-    } else {
-        // Xtream API dene
-        isM3U = false;
-        var username = getParameterByName(url, 'username');
-        var password = getParameterByName(url, 'password');
-        var match = url.match(/^https?:\/\/([^\/:]+)(?::(\d+))?/);
-        if (match && username && password) {
-            var server = match[1];
-            var port = match[2] || '80';
-            serverInput.value = server;
-            portInput.value = port;
-            usernameInput.value = username;
-            passwordInput.value = password;
-            doLogin(server, port, username, password);
-        } else {
-            loginStatus.textContent = 'URL'den bilgiler alınamadı. Lütfen manuel girin.';
-            loginStatus.style.color = '#ff6b6b';
-        }
-    }
-}
-
-// ---- Diğer olaylar (settings, player close, tabs, vs.) ----
+// ---- Diğer olaylar ----
 settingsOpen.addEventListener('click', function() { showScreen('settings-screen'); });
 settingsClose.addEventListener('click', function() { showScreen('main-screen'); });
 playerClose.addEventListener('click', function() {
@@ -723,21 +524,19 @@ playerClose.addEventListener('click', function() {
 recentBtn.addEventListener('click', function() { alert('Son çalınanlar listesi henüz uygulanmadı.'); });
 favoritesBtn.addEventListener('click', function() { alert('Sık kullanılanlar yöneticisi henüz uygulanmadı.'); });
 
-// Tabs
 for (var i = 0; i < tabs.length; i++) {
     tabs[i].addEventListener('click', function() {
         loadTab(this.getAttribute('data-tab'));
     });
 }
 
-// Enter tuşu ile giriş
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && loginScreen.classList.contains('active')) {
         loginAction();
     }
 });
 
-console.log('DuplexPlay başlatıldı - onclick ile güçlendirilmiş');
+console.log('DuplexPlay başlatıldı (Sadece Xtream API)');
 </script>
 </body>
 </html>
